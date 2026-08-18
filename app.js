@@ -1,13 +1,13 @@
 /**
- * Apple-Designed Advanced Word Combiner
- * High performance, multi-list generator with smart delimiters, 
- * live metrics, case transformations, and versatile exports (TXT, CSV, XLSX, MD, JSON).
+ * Word Combiner — Application Logic
+ * Multi-list Cartesian / Subset / Zip combination engine
+ * with case transforms, export (TXT, CSV, XLSX, MD, JSON), and real-time search.
  */
 
 (function () {
   'use strict';
 
-  // --- State Management ---
+  // ── State ──────────────────────────────────────────────────
   const state = {
     lists: [
       { id: 1, name: 'List 1', text: 'best, top, cheap, ultimate', enabled: true },
@@ -15,13 +15,13 @@
       { id: 3, name: 'List 3', text: 'deals, discounts, reviews, guide', enabled: true }
     ],
     nextId: 4,
-    separatorType: 'space', // 'space', 'nothing', 'custom'
+    separatorType: 'space',   // 'space' | 'nothing' | 'custom'
     customSeparator: '-',
-    combinationMode: 'cartesian', // 'cartesian', 'subsets', 'zip'
-    caseTransform: 'as-is', // 'as-is', 'lower', 'upper', 'title', 'camel', 'kebab', 'snake'
+    combinationMode: 'cartesian', // 'cartesian' | 'subsets' | 'zip'
+    caseTransform: 'as-is',
     prefix: '',
     suffix: '',
-    wrapper: 'none', // 'none', 'quotes', 'single-quotes', 'brackets', 'braces', 'parentheses'
+    wrapper: 'none',
     removeDuplicates: true,
     trimWords: true,
     searchQuery: '',
@@ -29,73 +29,42 @@
     displayLimit: 500
   };
 
-  // --- DOM Elements ---
-  const elements = {
-    themeToggleBtn: document.getElementById('themeToggleBtn'),
-    themeIcon: document.getElementById('themeIcon'),
-    wordListsContainer: document.getElementById('wordListsContainer'),
-    addListBtn: document.getElementById('addListBtn'),
-    clearAllListsBtn: document.getElementById('clearAllListsBtn'),
-    separatorSegmented: document.getElementById('separatorSegmented'),
-    customSeparatorWrapper: document.getElementById('customSeparatorWrapper'),
-    customSeparatorInput: document.getElementById('customSeparatorInput'),
-    combinationModeSelect: document.getElementById('combinationModeSelect'),
-    caseTransformSelect: document.getElementById('caseTransformSelect'),
-    wrapperSelect: document.getElementById('wrapperSelect'),
-    prefixInput: document.getElementById('prefixInput'),
-    suffixInput: document.getElementById('suffixInput'),
-    removeDuplicatesCheckbox: document.getElementById('removeDuplicatesCheckbox'),
-    trimWordsCheckbox: document.getElementById('trimWordsCheckbox'),
-    optionsToggleBtn: document.getElementById('optionsToggleBtn'),
-    optionsContent: document.getElementById('optionsContent'),
-    optionsChevron: document.getElementById('optionsChevron'),
-    outputCanvas: document.getElementById('outputCanvas'),
-    totalCountBadge: document.getElementById('totalCountBadge'),
-    calcTimeBadge: document.getElementById('calcTimeBadge'),
-    searchInput: document.getElementById('searchInput'),
-    copyBtn: document.getElementById('copyBtn'),
-    exportDropdownBtn: document.getElementById('exportDropdownBtn'),
-    exportMenu: document.getElementById('exportMenu'),
-    toastContainer: document.getElementById('toastContainer'),
-    presetsContainer: document.getElementById('presetsContainer')
-  };
-
-  // --- Presets Data ---
+  // ── Presets ────────────────────────────────────────────────
   const PRESETS = [
     {
-      name: '🔍 SEO Keywords',
+      name: 'SEO Keywords',
       lists: [
-        { name: 'Intent', text: 'best, top, cheap, buy, review' },
-        { name: 'Product', text: 'gaming laptop, mechanical keyboard, 4k monitor' },
+        { name: 'Intent',   text: 'best, top, cheap, buy, review' },
+        { name: 'Product',  text: 'gaming laptop, mechanical keyboard, 4k monitor' },
         { name: 'Modifier', text: '2026, online, deals, under $500' }
       ],
       separator: 'space',
       case: 'lower'
     },
     {
-      name: '🌐 Domain Ideas',
+      name: 'Domain Ideas',
       lists: [
         { name: 'Prefix', text: 'super, hyper, quick, swift, smart, prime' },
-        { name: 'Root', text: 'stack, byte, flow, cloud, scale, sync' },
-        { name: 'TLD', text: '.com, .io, .ai, .dev, .app' }
+        { name: 'Root',   text: 'stack, byte, flow, cloud, scale, sync' },
+        { name: 'TLD',    text: '.com, .io, .ai, .dev, .app' }
       ],
       separator: 'nothing',
       case: 'lower'
     },
     {
-      name: '🏷️ E-Commerce Tags',
+      name: 'E-Commerce Tags',
       lists: [
         { name: 'Category', text: 'men, women, unisex, kids' },
         { name: 'Material', text: 'cotton, leather, linen, denim' },
-        { name: 'Item', text: 'jacket, sneakers, bag, hoodie' }
+        { name: 'Item',     text: 'jacket, sneakers, bag, hoodie' }
       ],
       separator: 'space',
       case: 'title'
     },
     {
-      name: '⚡ URL / UTM Slugs',
+      name: 'UTM Slugs',
       lists: [
-        { name: 'Medium', text: 'email, newsletter, social, cpc' },
+        { name: 'Medium',   text: 'email, newsletter, social, cpc' },
         { name: 'Campaign', text: 'summer-sale, product-launch, promo' },
         { name: 'Audience', text: 'vip, new-users, leads' }
       ],
@@ -105,7 +74,39 @@
     }
   ];
 
-  // --- Initialization ---
+  // ── DOM refs ───────────────────────────────────────────────
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    themeToggleBtn:          $('themeToggleBtn'),
+    themeIcon:               $('themeIcon'),
+    wordListsContainer:      $('wordListsContainer'),
+    addListBtn:              $('addListBtn'),
+    clearAllListsBtn:        $('clearAllListsBtn'),
+    separatorSegmented:      $('separatorSegmented'),
+    customSeparatorWrapper:  $('customSeparatorWrapper'),
+    customSeparatorInput:    $('customSeparatorInput'),
+    combinationModeSelect:   $('combinationModeSelect'),
+    caseTransformSelect:     $('caseTransformSelect'),
+    wrapperSelect:           $('wrapperSelect'),
+    prefixInput:             $('prefixInput'),
+    suffixInput:             $('suffixInput'),
+    removeDuplicatesCheckbox:$('removeDuplicatesCheckbox'),
+    trimWordsCheckbox:       $('trimWordsCheckbox'),
+    optionsToggleBtn:        $('optionsToggleBtn'),
+    optionsContent:          $('optionsContent'),
+    optionsChevron:          $('optionsChevron'),
+    outputCanvas:            $('outputCanvas'),
+    totalCountBadge:         $('totalCountBadge'),
+    calcTimeBadge:           $('calcTimeBadge'),
+    searchInput:             $('searchInput'),
+    copyBtn:                 $('copyBtn'),
+    exportDropdownBtn:       $('exportDropdownBtn'),
+    exportMenu:              $('exportMenu'),
+    toastContainer:          $('toastContainer'),
+    presetsContainer:        $('presetsContainer')
+  };
+
+  // ── Init ───────────────────────────────────────────────────
   function init() {
     initTheme();
     renderPresets();
@@ -114,472 +115,488 @@
     generateCombinations();
   }
 
-  // --- Theme Handling ---
+  // ── Theme ──────────────────────────────────────────────────
   function initTheme() {
-    const savedTheme = localStorage.getItem('apple_word_combiner_theme');
-    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const activeTheme = savedTheme || (prefersDark ? 'dark' : 'light');
-    setTheme(activeTheme);
+    const saved = localStorage.getItem('wc_theme');
+    const sys   = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    setTheme(saved || (sys ? 'dark' : 'light'));
   }
 
   function setTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('apple_word_combiner_theme', theme);
-    if (elements.themeIcon) {
-      elements.themeIcon.innerHTML = theme === 'dark' 
-        ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`
-        : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
-    }
+    localStorage.setItem('wc_theme', theme);
+    if (!els.themeIcon) return;
+    els.themeIcon.innerHTML = theme === 'dark'
+      ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`
+      : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
   }
 
-  // --- Presets Rendering ---
+  // ── Presets ────────────────────────────────────────────────
   function renderPresets() {
-    if (!elements.presetsContainer) return;
-    elements.presetsContainer.innerHTML = PRESETS.map((p, idx) => `
-      <button type="button" class="preset-chip" data-preset-index="${idx}">
-        ${p.name}
-      </button>
-    `).join('');
+    if (!els.presetsContainer) return;
+    els.presetsContainer.innerHTML = PRESETS.map((p, i) =>
+      `<button type="button" class="preset-chip" data-preset-index="${i}">${escapeHtml(p.name)}</button>`
+    ).join('');
   }
 
-  // --- Parse Input Words ---
-  function parseWordsFromText(text) {
-    if (!text || typeof text !== 'string') return [];
-    // Split by newlines, commas, or semicolons
-    const tokens = text.split(/[\n,;]+/);
-    const result = [];
-    for (let token of tokens) {
-      let t = state.trimWords ? token.trim() : token;
-      if (t.length > 0) {
-        result.push(t);
-      }
-    }
-    return result;
+  // ── Parsing ────────────────────────────────────────────────
+  function parseWords(text) {
+    if (!text) return [];
+    return text.split(/[\n,;]+/)
+      .map(t => state.trimWords ? t.trim() : t)
+      .filter(t => t.length > 0);
   }
 
-  // --- Word Lists Management ---
+  // ── Render Lists ───────────────────────────────────────────
   function renderLists() {
-    if (!elements.wordListsContainer) return;
-    
-    elements.wordListsContainer.innerHTML = state.lists.map((list, index) => {
-      const parsedWords = parseWordsFromText(list.text);
-      const wordCount = parsedWords.length;
+    if (!els.wordListsContainer) return;
+    els.wordListsContainer.innerHTML = state.lists.map((list, idx) => {
+      const count = parseWords(list.text).length;
       return `
-        <div class="word-list-card ${list.enabled ? '' : 'disabled'}" data-list-id="${list.id}">
-          <div class="word-list-header">
-            <div class="list-identity">
-              <span class="list-tag">${index + 1}</span>
-              <input type="text" class="list-title-input" value="${escapeHtml(list.name)}" placeholder="List ${index + 1}" data-action="rename" title="Click to rename list" />
+        <div class="word-card ${list.enabled ? '' : 'is-disabled'}" data-list-id="${list.id}">
+          <div class="card-header">
+            <div class="card-identity">
+              <span class="list-index" aria-hidden="true">${idx + 1}</span>
+              <input
+                type="text"
+                class="list-name-input"
+                value="${escapeHtml(list.name)}"
+                placeholder="List ${idx + 1}"
+                data-action="rename"
+                aria-label="List name"
+              />
             </div>
-            <div class="list-meta">
-              <span class="word-count-chip">${wordCount} ${wordCount === 1 ? 'word' : 'words'}</span>
-              <label class="checkbox-label" title="Enable / disable this list" style="margin: 0;">
+            <div class="card-meta">
+              <span class="word-count" aria-live="polite">${count} ${count === 1 ? 'word' : 'words'}</span>
+              <label class="card-toggle" title="Enable / disable this list" aria-label="Enable list">
                 <input type="checkbox" data-action="toggle" ${list.enabled ? 'checked' : ''} />
               </label>
-              <div class="list-card-actions">
-                ${index > 0 ? `<button type="button" class="btn btn-ghost btn-sm btn-icon" data-action="move-up" title="Move Up"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"></polyline></svg></button>` : ''}
-                ${index < state.lists.length - 1 ? `<button type="button" class="btn btn-ghost btn-sm btn-icon" data-action="move-down" title="Move Down"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg></button>` : ''}
-                <button type="button" class="btn btn-ghost btn-sm btn-icon" data-action="duplicate" title="Duplicate List"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
-                <button type="button" class="btn btn-ghost btn-sm btn-icon" data-action="clear" title="Clear text"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg></button>
-                ${state.lists.length > 1 ? `<button type="button" class="btn btn-ghost btn-sm btn-icon" data-action="delete" title="Delete list" style="color: var(--danger);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>` : ''}
+              <div class="card-actions" role="toolbar" aria-label="List actions">
+                ${idx > 0 ? `<button type="button" class="card-btn" data-action="move-up" title="Move up" aria-label="Move list up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg></button>` : ''}
+                ${idx < state.lists.length - 1 ? `<button type="button" class="card-btn" data-action="move-down" title="Move down" aria-label="Move list down"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>` : ''}
+                <button type="button" class="card-btn" data-action="duplicate" title="Duplicate list" aria-label="Duplicate list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+                <button type="button" class="card-btn" data-action="clear" title="Clear text" aria-label="Clear list text"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></button>
+                ${state.lists.length > 1 ? `<button type="button" class="card-btn danger" data-action="delete" title="Delete list" aria-label="Delete list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : ''}
               </div>
             </div>
           </div>
-          <textarea class="list-textarea" placeholder="Enter words separated by commas or new lines...&#10;e.g. apple, banana, orange">${escapeHtml(list.text)}</textarea>
+          <textarea
+            class="list-textarea"
+            placeholder="Enter words separated by commas or new lines…&#10;e.g. apple, banana, orange"
+            aria-label="Words for ${escapeHtml(list.name)}"
+          >${escapeHtml(list.text)}</textarea>
         </div>
       `;
     }).join('');
   }
 
   function addList() {
-    state.lists.push({
-      id: state.nextId++,
-      name: `List ${state.lists.length + 1}`,
-      text: '',
-      enabled: true
-    });
+    state.lists.push({ id: state.nextId++, name: `List ${state.lists.length + 1}`, text: '', enabled: true });
     renderLists();
     generateCombinations();
-    // Focus the new textarea
     setTimeout(() => {
-      const cards = elements.wordListsContainer.querySelectorAll('.word-list-card');
-      if (cards.length > 0) {
-        const lastCard = cards[cards.length - 1];
-        const textarea = lastCard.querySelector('.list-textarea');
-        if (textarea) textarea.focus();
-      }
+      const cards = els.wordListsContainer.querySelectorAll('.word-card');
+      if (cards.length) cards[cards.length - 1].querySelector('.list-textarea').focus();
     }, 50);
   }
 
-  // --- Combinations Generator Core Engine ---
-  function getEffectiveSeparator() {
-    if (state.separatorType === 'space') return ' ';
+  // ── Combination Engine ─────────────────────────────────────
+  function getSep() {
+    if (state.separatorType === 'space')   return ' ';
     if (state.separatorType === 'nothing') return '';
     return state.customSeparator;
   }
 
-  function transformCase(text, type) {
-    if (!text) return '';
-    switch (type) {
-      case 'lower':
-        return text.toLowerCase();
-      case 'upper':
-        return text.toUpperCase();
-      case 'title':
-        return text.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.substr(1).toLowerCase());
+  function transformCase(text) {
+    switch (state.caseTransform) {
+      case 'lower': return text.toLowerCase();
+      case 'upper': return text.toUpperCase();
+      case 'title': return text.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
       case 'camel': {
-        const cleaned = text.replace(/[^a-zA-Z0-9]+(.)/g, (m, chr) => chr.toUpperCase()).replace(/[^a-zA-Z0-9]/g, '');
-        return cleaned ? cleaned.charAt(0).toLowerCase() + cleaned.slice(1) : '';
+        const c = text.replace(/[^a-zA-Z0-9]+(.)/g, (_, chr) => chr.toUpperCase()).replace(/[^a-zA-Z0-9]/g, '');
+        return c ? c.charAt(0).toLowerCase() + c.slice(1) : '';
       }
-      case 'kebab':
-        return text
-          .replace(/([a-z])([A-Z])/g, '$1-$2')
-          .replace(/[\s_]+/g, '-')
-          .toLowerCase();
-      case 'snake':
-        return text
-          .replace(/([a-z])([A-Z])/g, '$1_$2')
-          .replace(/[\s-]+/g, '_')
-          .toLowerCase();
-      default:
-        return text;
+      case 'kebab': return text.replace(/([a-z])([A-Z])/g, '$1-$2').replace(/[\s_]+/g, '-').toLowerCase();
+      case 'snake': return text.replace(/([a-z])([A-Z])/g, '$1_$2').replace(/[\s-]+/g, '_').toLowerCase();
+      default: return text;
     }
   }
 
-  function applyWrapper(word, wrapperType) {
-    switch (wrapperType) {
-      case 'quotes':
-        return `"${word}"`;
-      case 'single-quotes':
-        return `'${word}'`;
-      case 'brackets':
-        return `[${word}]`;
-      case 'braces':
-        return `{${word}}`;
-      case 'parentheses':
-        return `(${word})`;
-      default:
-        return word;
+  function applyWrapper(w) {
+    switch (state.wrapper) {
+      case 'quotes':         return `"${w}"`;
+      case 'single-quotes':  return `'${w}'`;
+      case 'brackets':       return `[${w}]`;
+      case 'braces':         return `{${w}}`;
+      case 'parentheses':    return `(${w})`;
+      default:               return w;
     }
   }
 
   function generateCombinations() {
-    const startTime = performance.now();
-    
-    // Get active word arrays
-    const activeLists = state.lists
-      .filter(l => l.enabled)
-      .map(l => parseWordsFromText(l.text))
-      .filter(arr => arr.length > 0);
+    const t0 = performance.now();
+    const active = state.lists.filter(l => l.enabled).map(l => parseWords(l.text)).filter(a => a.length > 0);
 
-    if (activeLists.length === 0) {
+    if (active.length === 0) {
       state.results = [];
       renderOutput(0);
       return;
     }
 
-    const sep = getEffectiveSeparator();
-    let rawResults = [];
+    const sep = getSep();
+    let raw = [];
 
     if (state.combinationMode === 'cartesian') {
-      // Standard Cartesian Product
-      rawResults = activeLists.reduce((acc, currList) => {
-        if (acc.length === 0) return currList;
-        const temp = [];
-        for (let i = 0; i < acc.length; i++) {
-          for (let j = 0; j < currList.length; j++) {
-            temp.push(acc[i] + sep + currList[j]);
-          }
-        }
-        return temp;
+      raw = active.reduce((acc, cur) => {
+        if (acc.length === 0) return cur;
+        const out = [];
+        for (const a of acc) for (const b of cur) out.push(a + sep + b);
+        return out;
       }, []);
     } else if (state.combinationMode === 'zip') {
-      // Zip line by line
-      const maxLen = Math.max(...activeLists.map(l => l.length));
-      for (let i = 0; i < maxLen; i++) {
-        const parts = [];
-        for (let list of activeLists) {
-          if (i < list.length) {
-            parts.push(list[i]);
-          }
-        }
-        if (parts.length > 0) {
-          rawResults.push(parts.join(sep));
-        }
+      const max = Math.max(...active.map(a => a.length));
+      for (let i = 0; i < max; i++) {
+        const parts = active.map(a => a[i]).filter(Boolean);
+        if (parts.length) raw.push(parts.join(sep));
       }
     } else if (state.combinationMode === 'subsets') {
-      // All combinations of lengths from 1 to N
-      function getSubsets(arrs, prefix = [], depth = 0) {
-        if (depth === arrs.length) {
-          if (prefix.length > 0) {
-            rawResults.push(prefix.join(sep));
-          }
-          return;
-        }
-        // Option 1: omit this list
-        getSubsets(arrs, prefix, depth + 1);
-        // Option 2: pick each word from this list
-        for (let word of arrs[depth]) {
-          getSubsets(arrs, [...prefix, word], depth + 1);
-        }
-      }
-      getSubsets(activeLists);
+      (function subsets(arrs, prefix, depth) {
+        if (depth === arrs.length) { if (prefix.length) raw.push(prefix.join(sep)); return; }
+        subsets(arrs, prefix, depth + 1);
+        for (const w of arrs[depth]) subsets(arrs, [...prefix, w], depth + 1);
+      })(active, [], 0);
     }
 
-    // Apply Case, Wrapper, Prefix, Suffix
-    let finalResults = [];
-    const hasPrefix = Boolean(state.prefix);
-    const hasSuffix = Boolean(state.suffix);
-
-    for (let item of rawResults) {
-      let transformed = transformCase(item, state.caseTransform);
-      if (state.wrapper !== 'none') {
-        transformed = applyWrapper(transformed, state.wrapper);
-      }
-      if (hasPrefix || hasSuffix) {
-        transformed = `${state.prefix}${transformed}${state.suffix}`;
-      }
-      finalResults.push(transformed);
-    }
-
-    // Deduplicate if requested
-    if (state.removeDuplicates) {
-      finalResults = Array.from(new Set(finalResults));
-    }
-
-    state.results = finalResults;
-    const duration = (performance.now() - startTime).toFixed(1);
-    renderOutput(duration);
-  }
-
-  // --- Output Rendering & Filtering ---
-  function renderOutput(calcTimeMs = 0) {
-    if (!elements.outputCanvas) return;
-
-    let filtered = state.results;
-    if (state.searchQuery) {
-      const q = state.searchQuery.toLowerCase();
-      filtered = state.results.filter(item => item.toLowerCase().includes(q));
-    }
-
-    // Update Badges
-    if (elements.totalCountBadge) {
-      if (state.searchQuery) {
-        elements.totalCountBadge.textContent = `${filtered.length.toLocaleString()} of ${state.results.length.toLocaleString()}`;
-      } else {
-        elements.totalCountBadge.textContent = `${state.results.length.toLocaleString()}`;
-      }
-    }
-
-    if (elements.calcTimeBadge) {
-      elements.calcTimeBadge.textContent = `${calcTimeMs} ms`;
-    }
-
-    if (filtered.length === 0) {
-      if (state.results.length === 0) {
-        elements.outputCanvas.innerHTML = `
-          <div class="empty-state">
-            <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <rect x="3" y="3" width="18" height="18" rx="4"></rect>
-              <line x1="8" y1="12" x2="16" y2="12"></line>
-              <line x1="12" y1="8" x2="12" y2="16"></line>
-            </svg>
-            <p>Add words to your lists to generate combinations instantly.</p>
-          </div>
-        `;
-      } else {
-        elements.outputCanvas.innerHTML = `
-          <div class="empty-state">
-            <p>No results match "<strong>${escapeHtml(state.searchQuery)}</strong>"</p>
-          </div>
-        `;
-      }
-      return;
-    }
-
-    // Limit DOM rendering for smoothness if very large
-    const displayItems = filtered.slice(0, state.displayLimit);
-    let html = displayItems.map((item, idx) => `
-      <div class="output-line" data-index="${idx}">${escapeHtml(item)}</div>
-    `).join('');
-
-    if (filtered.length > state.displayLimit) {
-      html += `
-        <div style="padding: 0.75rem 0.25rem; text-align: center; color: var(--text-secondary); font-size: 0.8rem; border-top: 1px dashed var(--border-light); margin-top: 0.5rem;">
-          Showing first ${state.displayLimit.toLocaleString()} of ${filtered.length.toLocaleString()} items. (All ${filtered.length.toLocaleString()} will be copied/exported).
-          <button type="button" class="btn btn-secondary btn-sm" id="loadMoreBtn" style="margin-left: 0.5rem;">Show More</button>
-        </div>
-      `;
-    }
-
-    elements.outputCanvas.innerHTML = html;
-
-    const loadMoreBtn = document.getElementById('loadMoreBtn');
-    if (loadMoreBtn) {
-      loadMoreBtn.addEventListener('click', () => {
-        state.displayLimit += 2000;
-        renderOutput(calcTimeMs);
-      });
-    }
-  }
-
-  // --- Copy & Export Engine ---
-  function showToast(message, type = 'normal') {
-    if (!elements.toastContainer) return;
-    const toast = document.createElement('div');
-    toast.className = 'toast';
-    toast.innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-        <polyline points="20 6 9 17 4 12"></polyline>
-      </svg>
-      <span>${escapeHtml(message)}</span>
-    `;
-    elements.toastContainer.appendChild(toast);
-
-    setTimeout(() => {
-      toast.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
-      toast.style.opacity = '0';
-      toast.style.transform = 'translateY(-8px) scale(0.95)';
-      setTimeout(() => toast.remove(), 200);
-    }, 2200);
-  }
-
-  function getExportData() {
-    let data = state.results;
-    if (state.searchQuery) {
-      const q = state.searchQuery.toLowerCase();
-      data = state.results.filter(item => item.toLowerCase().includes(q));
-    }
-    return data;
-  }
-
-  function copyToClipboard(format = 'newline') {
-    const data = getExportData();
-    if (data.length === 0) {
-      showToast('No combinations to copy');
-      return;
-    }
-
-    let textToCopy = '';
-    if (format === 'newline') {
-      textToCopy = data.join('\n');
-    } else if (format === 'comma') {
-      textToCopy = data.join(', ');
-    } else if (format === 'json') {
-      textToCopy = JSON.stringify(data, null, 2);
-    }
-
-    navigator.clipboard.writeText(textToCopy).then(() => {
-      showToast(`Copied ${data.length.toLocaleString()} combinations!`);
-    }).catch(() => {
-      // Fallback
-      const textarea = document.createElement('textarea');
-      textarea.value = textToCopy;
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
-      showToast(`Copied ${data.length.toLocaleString()} combinations!`);
+    let final = raw.map(item => {
+      let r = transformCase(item);
+      if (state.wrapper !== 'none') r = applyWrapper(r);
+      if (state.prefix || state.suffix) r = state.prefix + r + state.suffix;
+      return r;
     });
+
+    if (state.removeDuplicates) final = Array.from(new Set(final));
+
+    state.results = final;
+    renderOutput((performance.now() - t0).toFixed(1));
   }
 
-  function downloadFile(content, filename, mimeType) {
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
+  // ── Render Output ──────────────────────────────────────────
+  function renderOutput(ms = 0) {
+    if (!els.outputCanvas) return;
+
+    let items = state.results;
+    if (state.searchQuery) {
+      const q = state.searchQuery.toLowerCase();
+      items = items.filter(x => x.toLowerCase().includes(q));
+    }
+
+    if (els.totalCountBadge) {
+      els.totalCountBadge.textContent = state.searchQuery
+        ? `${items.length.toLocaleString()} of ${state.results.length.toLocaleString()}`
+        : state.results.length.toLocaleString();
+    }
+    if (els.calcTimeBadge) els.calcTimeBadge.textContent = `${ms} ms`;
+
+    if (items.length === 0) {
+      els.outputCanvas.innerHTML = `
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="4"/>
+            <line x1="8" y1="12" x2="16" y2="12"/><line x1="12" y1="8" x2="12" y2="16"/>
+          </svg>
+          <p>${state.results.length === 0 ? 'Add words to your lists to see combinations.' : `No results match "${escapeHtml(state.searchQuery)}"`}</p>
+        </div>`;
+      return;
+    }
+
+    const shown = items.slice(0, state.displayLimit);
+    let html = shown.map((item, i) => `<div class="output-line" data-index="${i}">${escapeHtml(item)}</div>`).join('');
+
+    if (items.length > state.displayLimit) {
+      html += `<div style="padding: 12px 8px; text-align:center; color:var(--text-secondary); font-size:0.875rem; border-top:1px solid var(--border); margin-top:8px">
+        Showing ${state.displayLimit.toLocaleString()} of ${items.length.toLocaleString()}.
+        <button type="button" id="loadMoreBtn" style="margin-left:8px; font-size:inherit; color:var(--accent); background:none; border:none; cursor:pointer; font-family:inherit; font-weight:500">Show More</button>
+      </div>`;
+    }
+
+    els.outputCanvas.innerHTML = html;
+
+    const more = document.getElementById('loadMoreBtn');
+    if (more) more.addEventListener('click', () => { state.displayLimit += 2000; renderOutput(ms); });
+  }
+
+  // ── Separator UI Sync ──────────────────────────────────────
+  function syncSeparatorUI() {
+    if (!els.separatorSegmented) return;
+    els.separatorSegmented.querySelectorAll('.seg-btn').forEach(btn => {
+      const active = btn.dataset.separator === state.separatorType;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', String(active));
+    });
+    if (els.customSeparatorWrapper) {
+      els.customSeparatorWrapper.hidden = state.separatorType !== 'custom';
+    }
+  }
+
+  // ── Toast ──────────────────────────────────────────────────
+  function toast(msg) {
+    if (!els.toastContainer) return;
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.setAttribute('role', 'status');
+    el.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg><span>${escapeHtml(msg)}</span>`;
+    els.toastContainer.appendChild(el);
+    setTimeout(() => {
+      el.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+      el.style.opacity = '0';
+      el.style.transform = 'translateX(-50%) translateY(-6px)';
+      setTimeout(() => el.remove(), 220);
+    }, 2400);
+  }
+
+  // ── Export Helpers ─────────────────────────────────────────
+  function getExportData() {
+    if (!state.searchQuery) return state.results;
+    const q = state.searchQuery.toLowerCase();
+    return state.results.filter(x => x.toLowerCase().includes(q));
+  }
+
+  function download(content, filename, mime) {
+    const url = URL.createObjectURL(new Blob([content], { type: mime }));
+    const a = Object.assign(document.createElement('a'), { href: url, download: filename });
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
 
-  function exportTxt() {
-    const data = getExportData();
-    if (data.length === 0) return showToast('No data to export');
-    downloadFile(data.join('\n'), 'word-combinations.txt', 'text/plain;charset=utf-8');
-    showToast('Downloaded .txt file');
-  }
-
-  function exportCsv() {
-    const data = getExportData();
-    if (data.length === 0) return showToast('No data to export');
-    const csvContent = 'Combination\n' + data.map(item => `"${item.replace(/"/g, '""')}"`).join('\n');
-    downloadFile(csvContent, 'word-combinations.csv', 'text/csv;charset=utf-8');
-    showToast('Downloaded .csv file');
-  }
-
-  function exportJson() {
-    const data = getExportData();
-    if (data.length === 0) return showToast('No data to export');
-    const jsonContent = JSON.stringify({
-      total: data.length,
-      separator: state.separatorType === 'custom' ? state.customSeparator : state.separatorType,
-      combinations: data
-    }, null, 2);
-    downloadFile(jsonContent, 'word-combinations.json', 'application/json;charset=utf-8');
-    showToast('Downloaded .json file');
-  }
-
-  function exportMarkdown() {
-    const data = getExportData();
-    if (data.length === 0) return showToast('No data to export');
-    
-    // Create comprehensive markdown document with list and table
-    let md = `# Word Combinations\n\n`;
-    md += `*Total items: ${data.length}*\n\n`;
-    md += `| # | Combination |\n`;
-    md += `|---|---|\n`;
-    data.slice(0, 2000).forEach((item, index) => {
-      md += `| ${index + 1} | ${item.replace(/\|/g, '\\|')} |\n`;
+  function copyText(text) {
+    navigator.clipboard.writeText(text).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
     });
-    if (data.length > 2000) {
-      md += `\n*...and ${data.length - 2000} more items.*\n`;
-    }
-    
-    downloadFile(md, 'word-combinations.md', 'text/markdown;charset=utf-8');
-    showToast('Downloaded .md file');
   }
 
+  function exportTxt()  { const d = getExportData(); if (!d.length) return toast('No data to export'); download(d.join('\n'), 'word-combinations.txt', 'text/plain'); toast('Downloaded .txt'); }
+  function exportCsv()  { const d = getExportData(); if (!d.length) return toast('No data to export'); download('Combination\n' + d.map(x => `"${x.replace(/"/g,'""')}"`).join('\n'), 'word-combinations.csv', 'text/csv'); toast('Downloaded .csv'); }
+  function exportJson() { const d = getExportData(); if (!d.length) return toast('No data to export'); download(JSON.stringify({ total: d.length, combinations: d }, null, 2), 'word-combinations.json', 'application/json'); toast('Downloaded .json'); }
+  function exportMd()   {
+    const d = getExportData();
+    if (!d.length) return toast('No data to export');
+    let md = `# Word Combinations\n\n*Total: ${d.length}*\n\n| # | Combination |\n|---|---|\n`;
+    d.slice(0, 2000).forEach((x, i) => md += `| ${i + 1} | ${x.replace(/\|/g, '\\|')} |\n`);
+    if (d.length > 2000) md += `\n*…and ${d.length - 2000} more.*\n`;
+    download(md, 'word-combinations.md', 'text/markdown');
+    toast('Downloaded .md');
+  }
   function exportXlsx() {
-    const data = getExportData();
-    if (data.length === 0) return showToast('No data to export');
-
+    const d = getExportData();
+    if (!d.length) return toast('No data to export');
     if (window.XLSX) {
-      const rows = data.map((val, idx) => ({ Index: idx + 1, Combination: val }));
-      const worksheet = window.XLSX.utils.json_to_sheet(rows);
-      const workbook = window.XLSX.utils.book_new();
-      window.XLSX.utils.book_append_sheet(workbook, worksheet, 'Combinations');
-      window.XLSX.writeFile(workbook, 'word-combinations.xlsx');
-      showToast('Downloaded .xlsx workbook');
+      const ws = window.XLSX.utils.json_to_sheet(d.map((v, i) => ({ '#': i + 1, Combination: v })));
+      const wb = window.XLSX.utils.book_new();
+      window.XLSX.utils.book_append_sheet(wb, ws, 'Combinations');
+      window.XLSX.writeFile(wb, 'word-combinations.xlsx');
+      toast('Downloaded .xlsx');
     } else {
-      // Fallback: Excel XML Spreadsheet 2003
-      let xml = `<?xml version="1.0"?>
-<?mso-application progid="Excel.Sheet"?>
-<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
- xmlns:o="urn:schemas-microsoft-com:office:office"
- xmlns:x="urn:schemas-microsoft-com:office:excel"
- xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
- <Worksheet ss:Name="Combinations">
-  <Table>
-   <Row><Cell><Data ss:Type="String">Index</Data></Cell><Cell><Data ss:Type="String">Combination</Data></Cell></Row>
-`;
-      data.forEach((item, i) => {
-        xml += `   <Row><Cell><Data ss:Type="Number">${i + 1}</Data></Cell><Cell><Data ss:Type="String">${escapeXml(item)}</Data></Cell></Row>\n`;
-      });
-      xml += `  </Table>
- </Worksheet>
-</Workbook>`;
-      downloadFile(xml, 'word-combinations.xls', 'application/vnd.ms-excel');
-      showToast('Downloaded Excel file');
+      toast('XLSX library not loaded — try refreshing.');
     }
   }
 
-  // --- Helpers ---
-  function escapeHtml(str) {
-    if (!str) return '';
-    return str
+  // ── Event Binding ──────────────────────────────────────────
+  function bindEvents() {
+
+    // Theme
+    els.themeToggleBtn?.addEventListener('click', () => {
+      const cur = document.documentElement.getAttribute('data-theme') || 'light';
+      setTheme(cur === 'dark' ? 'light' : 'dark');
+    });
+
+    // Add list
+    els.addListBtn?.addEventListener('click', addList);
+
+    // Clear all
+    els.clearAllListsBtn?.addEventListener('click', () => {
+      state.lists.forEach(l => l.text = '');
+      renderLists();
+      generateCombinations();
+      toast('Cleared all lists');
+    });
+
+    // Presets
+    els.presetsContainer?.addEventListener('click', e => {
+      const chip = e.target.closest('.preset-chip');
+      if (!chip) return;
+      const preset = PRESETS[parseInt(chip.dataset.presetIndex, 10)];
+      if (!preset) return;
+      state.lists = preset.lists.map(l => ({ id: state.nextId++, name: l.name, text: l.text, enabled: true }));
+      state.separatorType = preset.separator;
+      if (preset.customSep) state.customSeparator = preset.customSep;
+      if (preset.case) { state.caseTransform = preset.case; if (els.caseTransformSelect) els.caseTransformSelect.value = preset.case; }
+      syncSeparatorUI();
+      renderLists();
+      generateCombinations();
+      toast(`Loaded "${preset.name}"`);
+    });
+
+    // Word list delegation
+    els.wordListsContainer?.addEventListener('input', e => {
+      const card = e.target.closest('.word-card');
+      if (!card) return;
+      const list = state.lists.find(l => l.id === +card.dataset.listId);
+      if (!list) return;
+      if (e.target.classList.contains('list-textarea')) {
+        list.text = e.target.value;
+        const badge = card.querySelector('.word-count');
+        const cnt = parseWords(list.text).length;
+        if (badge) badge.textContent = `${cnt} ${cnt === 1 ? 'word' : 'words'}`;
+        generateCombinations();
+      } else if (e.target.classList.contains('list-name-input')) {
+        list.name = e.target.value;
+      }
+    });
+
+    els.wordListsContainer?.addEventListener('click', e => {
+      const card = e.target.closest('.word-card');
+      if (!card) return;
+      const idx  = state.lists.findIndex(l => l.id === +card.dataset.listId);
+      if (idx === -1) return;
+
+      const chk = e.target.closest('input[data-action="toggle"]');
+      if (chk) {
+        state.lists[idx].enabled = chk.checked;
+        card.classList.toggle('is-disabled', !chk.checked);
+        generateCombinations();
+        return;
+      }
+
+      const btn = e.target.closest('button[data-action]');
+      if (!btn) return;
+      const action = btn.dataset.action;
+
+      if (action === 'delete' && state.lists.length > 1) {
+        state.lists.splice(idx, 1);
+        renderLists(); generateCombinations();
+      } else if (action === 'duplicate') {
+        const orig = state.lists[idx];
+        state.lists.splice(idx + 1, 0, { id: state.nextId++, name: `${orig.name} Copy`, text: orig.text, enabled: orig.enabled });
+        renderLists(); generateCombinations();
+      } else if (action === 'clear') {
+        state.lists[idx].text = '';
+        card.querySelector('.list-textarea').value = '';
+        card.querySelector('.word-count').textContent = '0 words';
+        generateCombinations();
+      } else if (action === 'move-up' && idx > 0) {
+        [state.lists[idx - 1], state.lists[idx]] = [state.lists[idx], state.lists[idx - 1]];
+        renderLists(); generateCombinations();
+      } else if (action === 'move-down' && idx < state.lists.length - 1) {
+        [state.lists[idx], state.lists[idx + 1]] = [state.lists[idx + 1], state.lists[idx]];
+        renderLists(); generateCombinations();
+      }
+    });
+
+    // Separator
+    els.separatorSegmented?.addEventListener('click', e => {
+      const btn = e.target.closest('.seg-btn');
+      if (!btn) return;
+      state.separatorType = btn.dataset.separator;
+      syncSeparatorUI();
+      generateCombinations();
+    });
+
+    els.customSeparatorInput?.addEventListener('input', e => { state.customSeparator = e.target.value; generateCombinations(); });
+
+    // Advanced options
+    els.combinationModeSelect?.addEventListener('change',  e => { state.combinationMode = e.target.value;  generateCombinations(); });
+    els.caseTransformSelect?.addEventListener('change',    e => { state.caseTransform   = e.target.value;  generateCombinations(); });
+    els.wrapperSelect?.addEventListener('change',          e => { state.wrapper         = e.target.value;  generateCombinations(); });
+    els.prefixInput?.addEventListener('input',             e => { state.prefix          = e.target.value;  generateCombinations(); });
+    els.suffixInput?.addEventListener('input',             e => { state.suffix          = e.target.value;  generateCombinations(); });
+    els.removeDuplicatesCheckbox?.addEventListener('change', e => { state.removeDuplicates = e.target.checked; generateCombinations(); });
+    els.trimWordsCheckbox?.addEventListener('change',        e => { state.trimWords        = e.target.checked; generateCombinations(); });
+
+    // Advanced toggle
+    els.optionsToggleBtn?.addEventListener('click', () => {
+      const open = !els.optionsContent.hidden;
+      els.optionsContent.hidden = open;
+      els.optionsToggleBtn.setAttribute('aria-expanded', String(!open));
+      if (els.optionsChevron) els.optionsChevron.style.transform = open ? '' : 'rotate(180deg)';
+    });
+
+    // Search
+    els.searchInput?.addEventListener('input', e => { state.searchQuery = e.target.value; renderOutput(); });
+
+    // Copy
+    els.copyBtn?.addEventListener('click', () => {
+      const d = getExportData();
+      if (!d.length) return toast('No combinations to copy');
+      copyText(d.join('\n'));
+      toast(`Copied ${d.length.toLocaleString()} combinations`);
+    });
+
+    // Export dropdown
+    els.exportDropdownBtn?.addEventListener('click', e => {
+      e.stopPropagation();
+      const hidden = els.exportMenu.hidden;
+      els.exportMenu.hidden = !hidden;
+      els.exportDropdownBtn.setAttribute('aria-expanded', String(hidden));
+    });
+
+    document.addEventListener('click', e => {
+      if (!els.exportDropdownBtn?.contains(e.target) && !els.exportMenu?.contains(e.target)) {
+        if (els.exportMenu) { els.exportMenu.hidden = true; els.exportDropdownBtn?.setAttribute('aria-expanded', 'false'); }
+      }
+    });
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && els.exportMenu && !els.exportMenu.hidden) {
+        els.exportMenu.hidden = true;
+        els.exportDropdownBtn?.setAttribute('aria-expanded', 'false');
+        els.exportDropdownBtn?.focus();
+      }
+    });
+
+    els.exportMenu?.addEventListener('click', e => {
+      const item = e.target.closest('.menu-item');
+      if (!item) return;
+      els.exportMenu.hidden = true;
+      els.exportDropdownBtn?.setAttribute('aria-expanded', 'false');
+      const action = item.dataset.action;
+      if (action === 'download-txt')  exportTxt();
+      else if (action === 'download-csv')  exportCsv();
+      else if (action === 'download-xlsx') exportXlsx();
+      else if (action === 'download-md')   exportMd();
+      else if (action === 'download-json') exportJson();
+      else if (action === 'copy-comma') {
+        const d = getExportData();
+        copyText(d.join(', '));
+        toast(`Copied ${d.length.toLocaleString()} comma-separated`);
+      } else if (action === 'copy-json') {
+        copyText(JSON.stringify(getExportData()));
+        toast('Copied JSON array');
+      }
+    });
+
+    // Keyboard shortcut: Cmd/Ctrl+Shift+C
+    document.addEventListener('keydown', e => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'C') {
+        e.preventDefault();
+        const d = getExportData();
+        if (!d.length) return;
+        copyText(d.join('\n'));
+        toast(`Copied ${d.length.toLocaleString()} combinations`);
+      }
+    });
+  }
+
+  // ── Utilities ──────────────────────────────────────────────
+  function escapeHtml(s) {
+    if (!s) return '';
+    return String(s)
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
@@ -587,321 +604,11 @@
       .replace(/'/g, '&#039;');
   }
 
-  function escapeXml(str) {
-    if (!str) return '';
-    return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&apos;');
+  // ── Boot ───────────────────────────────────────────────────
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
   }
 
-  // --- Event Bindings ---
-  function bindEvents() {
-    // Theme toggle
-    if (elements.themeToggleBtn) {
-      elements.themeToggleBtn.addEventListener('click', () => {
-        const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-        setTheme(currentTheme === 'dark' ? 'light' : 'dark');
-      });
-    }
-
-    // Add List
-    if (elements.addListBtn) {
-      elements.addListBtn.addEventListener('click', addList);
-    }
-
-    // Clear All Lists
-    if (elements.clearAllListsBtn) {
-      elements.clearAllListsBtn.addEventListener('click', () => {
-        state.lists.forEach(l => l.text = '');
-        renderLists();
-        generateCombinations();
-        showToast('Cleared all word lists');
-      });
-    }
-
-    // Preset selection
-    if (elements.presetsContainer) {
-      elements.presetsContainer.addEventListener('click', (e) => {
-        const chip = e.target.closest('.preset-chip');
-        if (!chip) return;
-        const idx = parseInt(chip.getAttribute('data-preset-index'), 10);
-        const preset = PRESETS[idx];
-        if (!preset) return;
-
-        state.lists = preset.lists.map((l, i) => ({
-          id: state.nextId++,
-          name: l.name,
-          text: l.text,
-          enabled: true
-        }));
-
-        state.separatorType = preset.separator;
-        if (preset.customSep) state.customSeparator = preset.customSep;
-        if (preset.case) state.caseTransform = preset.case;
-
-        // Update UI controls
-        updateSeparatorUI();
-        if (elements.caseTransformSelect) elements.caseTransformSelect.value = state.caseTransform;
-
-        renderLists();
-        generateCombinations();
-        showToast(`Loaded "${preset.name}" preset`);
-      });
-    }
-
-    // Word Lists Delegation (Text typing, Delete, Duplicate, Move, Toggle, Rename)
-    if (elements.wordListsContainer) {
-      elements.wordListsContainer.addEventListener('input', (e) => {
-        const card = e.target.closest('.word-list-card');
-        if (!card) return;
-        const listId = parseInt(card.getAttribute('data-list-id'), 10);
-        const list = state.lists.find(l => l.id === listId);
-        if (!list) return;
-
-        if (e.target.classList.contains('list-textarea')) {
-          list.text = e.target.value;
-          // Update live counter badge
-          const countBadge = card.querySelector('.word-count-chip');
-          const count = parseWordsFromText(list.text).length;
-          if (countBadge) countBadge.textContent = `${count} ${count === 1 ? 'word' : 'words'}`;
-          generateCombinations();
-        } else if (e.target.classList.contains('list-title-input')) {
-          list.name = e.target.value;
-        }
-      });
-
-      elements.wordListsContainer.addEventListener('click', (e) => {
-        const btn = e.target.closest('button[data-action]');
-        const checkbox = e.target.closest('input[data-action="toggle"]');
-        const card = e.target.closest('.word-list-card');
-        if (!card) return;
-        const listId = parseInt(card.getAttribute('data-list-id'), 10);
-        const index = state.lists.findIndex(l => l.id === listId);
-        if (index === -1) return;
-
-        if (checkbox) {
-          state.lists[index].enabled = checkbox.checked;
-          card.classList.toggle('disabled', !checkbox.checked);
-          generateCombinations();
-          return;
-        }
-
-        if (!btn) return;
-        const action = btn.getAttribute('data-action');
-
-        if (action === 'delete') {
-          if (state.lists.length <= 1) return;
-          state.lists.splice(index, 1);
-          renderLists();
-          generateCombinations();
-        } else if (action === 'duplicate') {
-          const original = state.lists[index];
-          state.lists.splice(index + 1, 0, {
-            id: state.nextId++,
-            name: `${original.name} (Copy)`,
-            text: original.text,
-            enabled: original.enabled
-          });
-          renderLists();
-          generateCombinations();
-        } else if (action === 'clear') {
-          state.lists[index].text = '';
-          const textarea = card.querySelector('.list-textarea');
-          if (textarea) textarea.value = '';
-          const countBadge = card.querySelector('.word-count-chip');
-          if (countBadge) countBadge.textContent = '0 words';
-          generateCombinations();
-        } else if (action === 'move-up') {
-          if (index > 0) {
-            const temp = state.lists[index];
-            state.lists[index] = state.lists[index - 1];
-            state.lists[index - 1] = temp;
-            renderLists();
-            generateCombinations();
-          }
-        } else if (action === 'move-down') {
-          if (index < state.lists.length - 1) {
-            const temp = state.lists[index];
-            state.lists[index] = state.lists[index + 1];
-            state.lists[index + 1] = temp;
-            renderLists();
-            generateCombinations();
-          }
-        }
-      });
-    }
-
-    // Separator segmented control
-    if (elements.separatorSegmented) {
-      elements.separatorSegmented.addEventListener('click', (e) => {
-        const btn = e.target.closest('.segment-btn');
-        if (!btn) return;
-        const sepValue = btn.getAttribute('data-separator');
-        state.separatorType = sepValue;
-        updateSeparatorUI();
-        generateCombinations();
-      });
-    }
-
-    // Custom separator text input
-    if (elements.customSeparatorInput) {
-      elements.customSeparatorInput.addEventListener('input', (e) => {
-        state.customSeparator = e.target.value;
-        generateCombinations();
-      });
-    }
-
-    // Combination mode
-    if (elements.combinationModeSelect) {
-      elements.combinationModeSelect.addEventListener('change', (e) => {
-        state.combinationMode = e.target.value;
-        generateCombinations();
-      });
-    }
-
-    // Case transform
-    if (elements.caseTransformSelect) {
-      elements.caseTransformSelect.addEventListener('change', (e) => {
-        state.caseTransform = e.target.value;
-        generateCombinations();
-      });
-    }
-
-    // Wrapper
-    if (elements.wrapperSelect) {
-      elements.wrapperSelect.addEventListener('change', (e) => {
-        state.wrapper = e.target.value;
-        generateCombinations();
-      });
-    }
-
-    // Prefix & Suffix
-    if (elements.prefixInput) {
-      elements.prefixInput.addEventListener('input', (e) => {
-        state.prefix = e.target.value;
-        generateCombinations();
-      });
-    }
-    if (elements.suffixInput) {
-      elements.suffixInput.addEventListener('input', (e) => {
-        state.suffix = e.target.value;
-        generateCombinations();
-      });
-    }
-
-    // Deduplicate & Trim
-    if (elements.removeDuplicatesCheckbox) {
-      elements.removeDuplicatesCheckbox.addEventListener('change', (e) => {
-        state.removeDuplicates = e.target.checked;
-        generateCombinations();
-      });
-    }
-    if (elements.trimWordsCheckbox) {
-      elements.trimWordsCheckbox.addEventListener('change', (e) => {
-        state.trimWords = e.target.checked;
-        generateCombinations();
-      });
-    }
-
-    // Options accordion toggle
-    if (elements.optionsToggleBtn) {
-      elements.optionsToggleBtn.addEventListener('click', () => {
-        const isOpen = elements.optionsContent.classList.contains('open');
-        elements.optionsContent.classList.toggle('open', !isOpen);
-        if (elements.optionsChevron) {
-          elements.optionsChevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
-        }
-      });
-    }
-
-    // Search query
-    if (elements.searchInput) {
-      elements.searchInput.addEventListener('input', (e) => {
-        state.searchQuery = e.target.value;
-        renderOutput(0);
-      });
-    }
-
-    // Primary Copy Button
-    if (elements.copyBtn) {
-      elements.copyBtn.addEventListener('click', () => copyToClipboard('newline'));
-    }
-
-    // Export Dropdown menu toggle
-    if (elements.exportDropdownBtn && elements.exportMenu) {
-      elements.exportDropdownBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        elements.exportMenu.classList.toggle('show');
-      });
-
-      document.addEventListener('click', (e) => {
-        if (!e.target.closest('.export-dropdown-wrapper')) {
-          elements.exportMenu.classList.remove('show');
-        }
-      });
-
-      elements.exportMenu.addEventListener('click', (e) => {
-        const item = e.target.closest('.export-menu-item');
-        if (!item) return;
-        const action = item.getAttribute('data-action');
-        elements.exportMenu.classList.remove('show');
-
-        switch (action) {
-          case 'copy-newline':
-            copyToClipboard('newline');
-            break;
-          case 'copy-comma':
-            copyToClipboard('comma');
-            break;
-          case 'copy-json':
-            copyToClipboard('json');
-            break;
-          case 'download-txt':
-            exportTxt();
-            break;
-          case 'download-csv':
-            exportCsv();
-            break;
-          case 'download-xlsx':
-            exportXlsx();
-            break;
-          case 'download-md':
-            exportMarkdown();
-            break;
-          case 'download-json':
-            exportJson();
-            break;
-        }
-      });
-    }
-
-    // Global keyboard shortcuts (⌘+Shift+C / Ctrl+Shift+C to copy all)
-    document.addEventListener('keydown', (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'c') {
-        e.preventDefault();
-        copyToClipboard('newline');
-      }
-    });
-  }
-
-  function updateSeparatorUI() {
-    if (!elements.separatorSegmented) return;
-    elements.separatorSegmented.querySelectorAll('.segment-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.getAttribute('data-separator') === state.separatorType);
-    });
-
-    if (elements.customSeparatorWrapper) {
-      elements.customSeparatorWrapper.classList.toggle('visible', state.separatorType === 'custom');
-      if (state.separatorType === 'custom' && elements.customSeparatorInput) {
-        elements.customSeparatorInput.value = state.customSeparator;
-        elements.customSeparatorInput.focus();
-      }
-    }
-  }
-
-  // --- Run on Load ---
-  document.addEventListener('DOMContentLoaded', init);
 })();
