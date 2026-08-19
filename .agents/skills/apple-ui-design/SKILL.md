@@ -195,3 +195,12 @@ Load these on demand when implementing specific areas:
   segmented controls, text field validation, alert/sheet/popover selection guide,
   toolbar grouping rules, sidebar/tab-bar rules, progress indicator types, and chart
   design rules. Load when deciding between similar components or implementing interaction logic.
+
+- `references/apple-system-tokens.md` — **Apple's native macOS design token system**
+  extracted from `apple.css` (the real Figma/Framer component kit export). Contains:
+  the 5-layer semantic color system (labels, fills, window-background, grays, accents),
+  all 12 accent colors with light/dark/vibrant variants, component-specific semantic
+  tokens (alerts, tables, tooltips, scrollbars), and the **complete 5-size control
+  dimension system** (Mini/Small/Medium/Large/XL) for toggles, checkboxes, radio
+  buttons, sliders, menus, and segmented controls. Load when building utility/app
+  surfaces that should feel native-macOS: panels, inspectors, settings UIs, tables.
