@@ -18,6 +18,8 @@ const state = {
   separatorType: 'space',
   customSeparator: '-',
   combinationMode: 'cartesian',
+  minWords: 2,
+  maxWords: null,
   caseTransform: 'as-is',
   prefix: '',
   suffix: '',
@@ -50,6 +52,8 @@ const els = {
 
   // Inspector
   modeSelect: $('combinationModeSelect'),
+  minWordsInput: $('minWordsInput'),
+  maxWordsInput: $('maxWordsInput'),
   separatorSelect: $('separatorTypeSelect'),
   customSepRow: $('customSepRow'),
   customSepInput: $('customSeparatorInput'),
@@ -107,6 +111,19 @@ function renderLists() {
 }
 
 // ── Engine ─────────────────────────────────────────────────
+function countWords(text, sep) {
+  if (!text) return 0;
+  const trimmed = text.trim();
+  if (!trimmed) return 0;
+  if (sep && sep !== ' ' && trimmed.includes(sep)) {
+    return trimmed
+      .split(sep)
+      .flatMap((s) => s.trim().split(/\s+/))
+      .filter(Boolean).length;
+  }
+  return trimmed.split(/\s+/).filter(Boolean).length;
+}
+
 function parseWords(text) {
   if (!text) return [];
   return text
@@ -204,6 +221,24 @@ function generateCombinations() {
       subsets(arrs, prefix, depth + 1);
       for (const w of arrs[depth]) subsets(arrs, [...prefix, w], depth + 1);
     })(active, [], 0);
+  }
+
+  // Filter by min/max word count limits
+  if (
+    state.minWords !== null &&
+    state.minWords !== undefined &&
+    !isNaN(state.minWords) &&
+    state.minWords > 0
+  ) {
+    raw = raw.filter((item) => countWords(item, sep) >= state.minWords);
+  }
+  if (
+    state.maxWords !== null &&
+    state.maxWords !== undefined &&
+    !isNaN(state.maxWords) &&
+    state.maxWords > 0
+  ) {
+    raw = raw.filter((item) => countWords(item, sep) <= state.maxWords);
   }
 
   let final = raw.map((item) => {
@@ -308,6 +343,16 @@ function bindEvents() {
   // Inspector
   els.modeSelect?.addEventListener('change', (e) => {
     state.combinationMode = e.target.value;
+    generateCombinations();
+  });
+  els.minWordsInput?.addEventListener('input', (e) => {
+    const val = parseInt(e.target.value, 10);
+    state.minWords = isNaN(val) || val <= 0 ? null : val;
+    generateCombinations();
+  });
+  els.maxWordsInput?.addEventListener('input', (e) => {
+    const val = parseInt(e.target.value, 10);
+    state.maxWords = isNaN(val) || val <= 0 ? null : val;
     generateCombinations();
   });
   els.separatorSelect?.addEventListener('change', (e) => {

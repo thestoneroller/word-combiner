@@ -487,6 +487,20 @@ input[type='search'] {
   box-shadow: 0 0 0 3px rgba(0, 136, 255, 0.3);
 }
 
+.mac-number-input {
+  -appearance: textfield;
+}
+
+.mac-number-input::-webkit-inner-spin-button,
+.mac-number-input::-webkit-outer-spin-button {
+  opacity: 0.6;
+}
+
+.mac-number-input:hover::-webkit-inner-spin-button,
+.mac-number-input:hover::-webkit-outer-spin-button {
+  opacity: 1;
+}
+
 /* Native Search Input */
 .mac-search {
   border-radius: 100px;
