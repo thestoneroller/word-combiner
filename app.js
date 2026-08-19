@@ -20,8 +20,6 @@ const state = {
   combinationMode: 'cartesian',
   maxWords: 2,
   caseTransform: 'as-is',
-  prefix: '',
-  suffix: '',
   wrapper: 'none',
   removeDuplicates: true,
   trimWords: true,
@@ -103,8 +101,6 @@ const els = {
   customSepInput: $('customSeparatorInput'),
   caseSelect: $('caseTransformSelect'),
   wrapperSelect: $('wrapperSelect'),
-  prefixInput: $('prefixInput'),
-  suffixInput: $('suffixInput'),
   removeDupsCheck: $('removeDuplicatesCheckbox'),
   trimCheck: $('trimWordsCheckbox'),
 };
@@ -182,8 +178,6 @@ self.onmessage = function(e) {
     maxWords,
     caseTransform,
     wrapper,
-    prefix,
-    suffix,
     removeDuplicates,
   } = e.data;
 
@@ -243,7 +237,6 @@ self.onmessage = function(e) {
   let final = raw.map((item) => {
     let r = transformCase(item, caseTransform);
     if (wrapper !== 'none') r = applyWrapper(r, wrapper);
-    if (prefix || suffix) r = (prefix || '') + r + (suffix || '');
     return r;
   });
 
@@ -312,8 +305,8 @@ function renderLists() {
           <div class="card-header">
             <input type="text" class="card-title" value="${escapeHtml(list.name)}" data-action="rename" />
             <div class="card-actions">
-              <span style="font-size:11px; color:var(--labels--secondary); margin-right:8px; display:flex; align-items:center">${count} words</span>
-              <input type="checkbox" class="mac-toggle" style="transform:scale(0.7); margin-right:4px" data-action="toggle" ${list.enabled ? 'checked' : ''} />
+              <span style="font-size:12px; color:var(--labels--secondary); margin-right:8px; display:flex; align-items:center">${count} words</span>
+              <input type="checkbox" class="mac-toggle" style="margin-right:4px" data-action="toggle" ${list.enabled ? 'checked' : ''} />
               <button class="icon-btn" data-action="delete" title="Delete" style="width:20px;height:20px; color:var(--labels--tertiary)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
           </div>
@@ -347,6 +340,7 @@ function scheduleGeneration(delay = 100) {
 }
 
 function generateCombinations() {
+  state.displayLimit = 500;
   const jobId = ++currentJobId;
   const active = state.lists
     .filter((l) => l.enabled)
@@ -368,8 +362,6 @@ function generateCombinations() {
     maxWords: state.maxWords,
     caseTransform: state.caseTransform,
     wrapper: state.wrapper,
-    prefix: state.prefix,
-    suffix: state.suffix,
     removeDuplicates: state.removeDuplicates,
   };
 
@@ -423,7 +415,6 @@ function runFallbackCalculation(p) {
 
   let final = raw.map((item) => {
     let r = item;
-    if (p.prefix || p.suffix) r = (p.prefix || '') + r + (p.suffix || '');
     return r;
   });
 
@@ -466,7 +457,9 @@ function updateSelectionUI(filtered = getFilteredResults()) {
   // Export button label
   if (els.exportBtn) {
     els.exportBtn.textContent =
-      totalSelected > 0 ? `Export (${totalSelected.toLocaleString()})…` : 'Export…';
+      totalSelected > 0
+        ? `Export (${totalSelected.toLocaleString()})…`
+        : 'Export…';
   }
 
   // Master Checkbox state
@@ -493,13 +486,19 @@ function updateSelectionUI(filtered = getFilteredResults()) {
   }
 }
 
-function renderOutput(ms = 0) {
+function renderOutput(ms) {
   if (!els.outputCanvas) return;
   const filtered = getFilteredResults();
 
-  els.totalCountBadge.textContent = state.searchQuery
-    ? `${filtered.length} / ${state.results.length}`
-    : state.results.length.toLocaleString();
+  const shownCount = Math.min(filtered.length, state.displayLimit);
+  if (filtered.length > state.displayLimit) {
+    els.totalCountBadge.textContent = `Showing ${shownCount.toLocaleString()} of ${filtered.length.toLocaleString()}`;
+  } else if (state.searchQuery) {
+    els.totalCountBadge.textContent = `${filtered.length.toLocaleString()} / ${state.results.length.toLocaleString()}`;
+  } else {
+    els.totalCountBadge.textContent = state.results.length.toLocaleString();
+  }
+
   if (ms !== undefined && els.calcTimeBadge)
     els.calcTimeBadge.textContent = `${ms}ms`;
 
@@ -511,7 +510,7 @@ function renderOutput(ms = 0) {
   }
 
   const shown = filtered.slice(0, state.displayLimit);
-  els.outputCanvas.innerHTML = shown
+  let html = shown
     .map((item, idx) => {
       const isSelected = state.selectedItems.has(item);
       return `
@@ -523,6 +522,20 @@ function renderOutput(ms = 0) {
       `;
     })
     .join('');
+
+  if (filtered.length > state.displayLimit) {
+    html += `
+      <div class="load-more-bar">
+        <span>Showing <strong class="load-more-text">${shown.length.toLocaleString()}</strong> of <strong>${filtered.length.toLocaleString()}</strong> items</span>
+        <div class="load-more-actions">
+          <button type="button" class="mac-btn" id="loadMoreBtn">Load 500 More</button>
+          <button type="button" class="mac-btn primary" id="showAllBtn">Show All (${filtered.length.toLocaleString()})</button>
+        </div>
+      </div>
+    `;
+  }
+
+  els.outputCanvas.innerHTML = html;
 }
 
 // ── Toast ──────────────────────────────────────────────────
@@ -568,7 +581,10 @@ function getExportDelimiter() {
   }
 }
 
-function buildExportData(scope = state.exportConfig.scope, format = state.exportConfig.format) {
+function buildExportData(
+  scope = state.exportConfig.scope,
+  format = state.exportConfig.format,
+) {
   const items = getExportItems(scope);
 
   if (format === 'txt') {
@@ -614,7 +630,10 @@ function buildExportData(scope = state.exportConfig.scope, format = state.export
 }
 
 function updateExportModalPreview() {
-  const data = buildExportData(state.exportConfig.scope, state.exportConfig.format);
+  const data = buildExportData(
+    state.exportConfig.scope,
+    state.exportConfig.format,
+  );
   if (!data) return;
 
   if (els.previewCountBadge) {
@@ -629,9 +648,12 @@ function updateExportModalPreview() {
 
     if (data.type === 'xlsx') {
       const sample = data.items.slice(0, 8);
-      const rows = state.exportConfig.includeHeader ? ['[Header: Combination]'] : [];
+      const rows = state.exportConfig.includeHeader
+        ? ['[Header: Combination]']
+        : [];
       sample.forEach((item, i) => rows.push(`Row ${i + 1}: ${item}`));
-      if (data.items.length > 8) rows.push(`... and ${data.items.length - 8} more rows`);
+      if (data.items.length > 8)
+        rows.push(`... and ${data.items.length - 8} more rows`);
       els.exportPreviewBox.textContent = rows.join('\n');
     } else {
       const sampleLines = data.content.split('\n').slice(0, 10);
@@ -654,9 +676,11 @@ function setExportScope(scope) {
 function setExportFormat(format) {
   state.exportConfig.format = format;
   if (els.exportFormatSegmented) {
-    els.exportFormatSegmented.querySelectorAll('.mac-segment').forEach((btn) => {
-      btn.classList.toggle('active', btn.dataset.format === format);
-    });
+    els.exportFormatSegmented
+      .querySelectorAll('.mac-segment')
+      .forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.format === format);
+      });
   }
 
   if (els.textOptionsSection) {
@@ -705,7 +729,10 @@ function closeExportModal() {
 }
 
 function downloadExportFile() {
-  const data = buildExportData(state.exportConfig.scope, state.exportConfig.format);
+  const data = buildExportData(
+    state.exportConfig.scope,
+    state.exportConfig.format,
+  );
   if (!data || data.count === 0) {
     showToast('No items to export');
     return;
@@ -740,13 +767,16 @@ function downloadExportFile() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  showToast(`Exported ${data.count.toLocaleString()} items (${data.extension})`);
+  showToast(
+    `Exported ${data.count.toLocaleString()} items (${data.extension})`,
+  );
   closeExportModal();
 }
 
 function copyExportToClipboard() {
   // If format is xlsx, copy formatted text for clipboard
-  const format = state.exportConfig.format === 'xlsx' ? 'txt' : state.exportConfig.format;
+  const format =
+    state.exportConfig.format === 'xlsx' ? 'txt' : state.exportConfig.format;
   const data = buildExportData(state.exportConfig.scope, format);
   if (!data || data.count === 0) {
     showToast('No items to copy');
@@ -803,7 +833,7 @@ function bindEvents() {
     setTheme(
       document.documentElement.getAttribute('data-theme') === 'dark'
         ? 'light'
-        : 'dark'
+        : 'dark',
     );
   });
 
@@ -909,14 +939,6 @@ function bindEvents() {
     state.wrapper = e.target.value;
     generateCombinations();
   });
-  els.prefixInput?.addEventListener('input', (e) => {
-    state.prefix = e.target.value;
-    scheduleGeneration(80);
-  });
-  els.suffixInput?.addEventListener('input', (e) => {
-    state.suffix = e.target.value;
-    scheduleGeneration(80);
-  });
   els.removeDupsCheck?.addEventListener('change', (e) => {
     state.removeDuplicates = e.target.checked;
     generateCombinations();
@@ -929,15 +951,40 @@ function bindEvents() {
   // Output Search Filter
   els.searchInput?.addEventListener('input', (e) => {
     state.searchQuery = e.target.value;
+    state.displayLimit = 500;
     renderOutput();
   });
 
-  // Output Canvas Item Click / Selection
+  // Infinite scroll on Output Canvas
+  els.outputCanvas?.addEventListener('scroll', () => {
+    const filtered = getFilteredResults();
+    if (state.displayLimit < filtered.length) {
+      const { scrollTop, scrollHeight, clientHeight } = els.outputCanvas;
+      if (scrollTop + clientHeight >= scrollHeight - 120) {
+        state.displayLimit += 500;
+        renderOutput();
+      }
+    }
+  });
+
+  // Output Canvas Item Click / Selection & Load More
   els.outputCanvas?.addEventListener('click', (e) => {
+    const filtered = getFilteredResults();
+
+    if (e.target.id === 'loadMoreBtn' || e.target.closest('#loadMoreBtn')) {
+      state.displayLimit += 500;
+      renderOutput();
+      return;
+    }
+    if (e.target.id === 'showAllBtn' || e.target.closest('#showAllBtn')) {
+      state.displayLimit = filtered.length;
+      renderOutput();
+      return;
+    }
+
     const line = e.target.closest('.output-line');
     if (!line) return;
 
-    const filtered = getFilteredResults();
     const index = parseInt(line.dataset.index, 10);
     const item = filtered[index];
     if (item === undefined) return;
@@ -1003,7 +1050,11 @@ function bindEvents() {
   });
 
   document.addEventListener('click', (e) => {
-    if (els.selectMenu && !els.selectMenu.hidden && !e.target.closest('.mac-dropdown-wrap')) {
+    if (
+      els.selectMenu &&
+      !els.selectMenu.hidden &&
+      !e.target.closest('.mac-dropdown-wrap')
+    ) {
       els.selectMenu.hidden = true;
     }
   });
@@ -1067,7 +1118,8 @@ function bindEvents() {
   els.exportDelimiterSelect?.addEventListener('change', (e) => {
     state.exportConfig.delimiter = e.target.value;
     if (els.exportCustomDelimRow) {
-      els.exportCustomDelimRow.hidden = state.exportConfig.delimiter !== 'custom';
+      els.exportCustomDelimRow.hidden =
+        state.exportConfig.delimiter !== 'custom';
     }
     updateExportModalPreview();
   });
@@ -1127,4 +1179,3 @@ if (document.readyState === 'loading') {
 } else {
   init();
 }
-
