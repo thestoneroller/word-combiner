@@ -124,28 +124,32 @@
               </select>
             </div>
             <div class="inspector-row">
-              <span class="inspector-label">Min Words</span>
-              <input
-                type="number"
-                class="mac-input mac-number-input"
-                id="minWordsInput"
-                min="1"
-                max="50"
-                value="2"
-                style="width: 70px; text-align: center"
-              />
-            </div>
-            <div class="inspector-row">
               <span class="inspector-label">Max Words</span>
-              <input
-                type="number"
-                class="mac-input mac-number-input"
-                id="maxWordsInput"
-                min="1"
-                max="50"
-                placeholder="No limit"
-                style="width: 70px; text-align: center"
-              />
+              <div class="mac-stepper">
+                <button
+                  type="button"
+                  class="mac-stepper-btn"
+                  id="maxWordsDecBtn"
+                  title="Decrease"
+                  aria-label="Decrease max words"
+                >−</button>
+                <input
+                  type="number"
+                  class="mac-input mac-stepper-input"
+                  id="maxWordsInput"
+                  min="1"
+                  max="50"
+                  value="2"
+                  placeholder="All"
+                />
+                <button
+                  type="button"
+                  class="mac-stepper-btn"
+                  id="maxWordsIncBtn"
+                  title="Increase"
+                  aria-label="Increase max words"
+                >+</button>
+              </div>
             </div>
             <div class="inspector-row">
               <span class="inspector-label">Separator</span>

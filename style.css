@@ -472,7 +472,7 @@ input[type='search'] {
   border-color: var(--accents--blue);
 }
 
-/* Native Text Input */
+/* Native Text & Number Inputs */
 .mac-input {
   background: var(--fills---opaque--quaternary);
   border: 1px solid var(--card-border);
@@ -487,18 +487,88 @@ input[type='search'] {
   box-shadow: 0 0 0 3px rgba(0, 136, 255, 0.3);
 }
 
-.mac-number-input {
-  -appearance: textfield;
+/* Cross-browser reset for number input spin buttons */
+input[type='number'],
+.mac-number-input,
+.mac-stepper-input {
+  -moz-appearance: textfield !important;
+  appearance: textfield !important;
+  margin: 0;
 }
-
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button,
 .mac-number-input::-webkit-inner-spin-button,
-.mac-number-input::-webkit-outer-spin-button {
-  opacity: 0.6;
+.mac-number-input::-webkit-outer-spin-button,
+.mac-stepper-input::-webkit-inner-spin-button,
+.mac-stepper-input::-webkit-outer-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+  display: none !important;
 }
 
-.mac-number-input:hover::-webkit-inner-spin-button,
-.mac-number-input:hover::-webkit-outer-spin-button {
-  opacity: 1;
+/* macOS Stepper Component */
+.mac-stepper {
+  display: inline-flex;
+  align-items: center;
+  background: var(--fills---opaque--quaternary);
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  overflow: hidden;
+  height: 24px;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.mac-stepper-input {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  width: 44px !important;
+  height: 100% !important;
+  text-align: center;
+  padding: 0 2px !important;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 0 !important;
+  color: var(--labels--primary);
+}
+
+.mac-stepper-input:focus {
+  background: var(--fills---opaque--tertiary) !important;
+  box-shadow: none !important;
+}
+
+.mac-stepper-btn {
+  width: 22px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--labels--secondary);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1;
+  user-select: none;
+  transition: background 0.1s, color 0.1s;
+}
+
+.mac-stepper-btn:hover {
+  background: var(--fills---opaque--primary);
+  color: var(--labels--primary);
+}
+
+.mac-stepper-btn:active {
+  background: var(--fills---opaque--secondary);
+}
+
+.calculating-pulse {
+  animation: pulse-badge 1s infinite alternate ease-in-out;
+}
+@keyframes pulse-badge {
+  0% { opacity: 0.5; }
+  100% { opacity: 1; }
 }
 
 /* Native Search Input */
