@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Word Combiner Pro</title>
-    <link rel="stylesheet" href="style.css" />
+    <title>Word Combiner</title>
+    <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
     <div class="macos-window">
@@ -37,7 +37,6 @@
 
       <!-- Workspace -->
       <div class="macos-workspace">
-
         <!-- Center: Editor (Canvas) -->
         <main class="canvas-center">
           <div class="output-header" style="justify-content: flex-end">
@@ -62,11 +61,20 @@
           </div>
 
           <!-- Console (Results output) -->
-          <div class="output-header" style="border-top: 1px solid var(--divider-color)">
-            <div style="display:flex; gap:16px; align-items:center;">
-              <input type="search" class="mac-input mac-search" id="searchInput" placeholder="Filter combinations" />
+          <div
+            class="output-header"
+            style="border-top: 1px solid var(--divider-color)"
+          >
+            <div style="display: flex; gap: 16px; align-items: center">
+              <input
+                type="search"
+                class="mac-input mac-search"
+                id="searchInput"
+                placeholder="Filter combinations"
+              />
               <div class="output-stats">
-                <span id="totalCountBadge">0</span> items • <span id="calcTimeBadge">0ms</span>
+                <span id="totalCountBadge">0</span> items •
+                <span id="calcTimeBadge">0ms</span>
               </div>
             </div>
             <button class="mac-btn primary" id="exportBtn">Export…</button>
@@ -205,6 +213,6 @@
 
     <!-- Minimal script dependencies -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script src="app.js"></script>
+    <script src="./app.js"></script>
   </body>
 </html>

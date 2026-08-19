@@ -1,102 +1,95 @@
-/**
- * Word Combiner Pro — macOS Native App Logic
- */
+// ── State ──────────────────────────────────────────────────
+const state = {
+  lists: [
+    {
+      id: 1,
+      name: 'List 1',
+      text: 'best, top, cheap, ultimate',
+      enabled: true,
+    },
+    {
+      id: 2,
+      name: 'List 2',
+      text: 'laptop, smartphone, headphones',
+      enabled: true,
+    },
+  ],
+  nextId: 3,
+  separatorType: 'space',
+  customSeparator: '-',
+  combinationMode: 'cartesian',
+  caseTransform: 'as-is',
+  prefix: '',
+  suffix: '',
+  wrapper: 'none',
+  removeDuplicates: true,
+  trimWords: true,
+  searchQuery: '',
+  results: [],
+  displayLimit: 500,
+};
 
-(function () {
-  'use strict';
+// ── DOM refs ───────────────────────────────────────────────
+const $ = (id) => document.getElementById(id);
+const els = {
+  // Structural
+  themeToggleBtn: $('themeToggleBtn'),
+  inspectorToggle: $('inspectorToggle'),
+  rightInspector: $('rightInspector'),
 
-  // ── State ──────────────────────────────────────────────────
-  const state = {
-    lists: [
-      {
-        id: 1,
-        name: 'List 1',
-        text: 'best, top, cheap, ultimate',
-        enabled: true,
-      },
-      {
-        id: 2,
-        name: 'List 2',
-        text: 'laptop, smartphone, headphones',
-        enabled: true,
-      },
-    ],
-    nextId: 3,
-    separatorType: 'space',
-    customSeparator: '-',
-    combinationMode: 'cartesian',
-    caseTransform: 'as-is',
-    prefix: '',
-    suffix: '',
-    wrapper: 'none',
-    removeDuplicates: true,
-    trimWords: true,
-    searchQuery: '',
-    results: [],
-    displayLimit: 500,
-  };
+  // Canvas & Lists
+  wordListsContainer: $('wordListsContainer'),
+  addListBtn: $('addListBtn'),
 
-  // ── DOM refs ───────────────────────────────────────────────
-  const $ = (id) => document.getElementById(id);
-  const els = {
-    // Structural
-    themeToggleBtn: $('themeToggleBtn'),
-    inspectorToggle: $('inspectorToggle'),
-    rightInspector: $('rightInspector'),
+  // Output
+  outputCanvas: $('outputCanvas'),
+  totalCountBadge: $('totalCountBadge'),
+  calcTimeBadge: $('calcTimeBadge'),
+  searchInput: $('searchInput'),
+  exportBtn: $('exportBtn'),
 
-    // Canvas & Lists
-    wordListsContainer: $('wordListsContainer'),
-    addListBtn: $('addListBtn'),
+  // Inspector
+  modeSelect: $('combinationModeSelect'),
+  separatorSelect: $('separatorTypeSelect'),
+  customSepRow: $('customSepRow'),
+  customSepInput: $('customSeparatorInput'),
+  caseSelect: $('caseTransformSelect'),
+  wrapperSelect: $('wrapperSelect'),
+  prefixInput: $('prefixInput'),
+  suffixInput: $('suffixInput'),
+  removeDupsCheck: $('removeDuplicatesCheckbox'),
+  trimCheck: $('trimWordsCheckbox'),
+};
 
-    // Output
-    outputCanvas: $('outputCanvas'),
-    totalCountBadge: $('totalCountBadge'),
-    calcTimeBadge: $('calcTimeBadge'),
-    searchInput: $('searchInput'),
-    exportBtn: $('exportBtn'),
+// ── Init ───────────────────────────────────────────────────
+function init() {
+  initTheme();
+  renderLists();
+  bindEvents();
+  generateCombinations();
+}
 
-    // Inspector
-    modeSelect: $('combinationModeSelect'),
-    separatorSelect: $('separatorTypeSelect'),
-    customSepRow: $('customSepRow'),
-    customSepInput: $('customSeparatorInput'),
-    caseSelect: $('caseTransformSelect'),
-    wrapperSelect: $('wrapperSelect'),
-    prefixInput: $('prefixInput'),
-    suffixInput: $('suffixInput'),
-    removeDupsCheck: $('removeDuplicatesCheckbox'),
-    trimCheck: $('trimWordsCheckbox'),
-  };
+// ── Theme ──────────────────────────────────────────────────
+function initTheme() {
+  const saved = localStorage.getItem('wc_theme');
+  const sys =
+    window.matchMedia &&
+    window.matchMedia('(prefers-color-scheme: dark)').matches;
+  setTheme(saved || (sys ? 'dark' : 'light'));
+}
 
-  // ── Init ───────────────────────────────────────────────────
-  function init() {
-    initTheme();
-    renderLists();
-    bindEvents();
-    generateCombinations();
-  }
+function setTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('wc_theme', theme);
+}
 
-  // ── Theme ──────────────────────────────────────────────────
-  function initTheme() {
-    const saved = localStorage.getItem('wc_theme');
-    const sys =
-      window.matchMedia &&
-      window.matchMedia('(prefers-color-scheme: dark)').matches;
-    setTheme(saved || (sys ? 'dark' : 'light'));
-  }
-
-  function setTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('wc_theme', theme);
-  }
-
-  // ── Render ─────────────────────────────────────────────────
-  function renderLists() {
-    if (!els.wordListsContainer) return;
-    els.wordListsContainer.innerHTML = state.lists
-      .map((list, idx) => {
-        const count = parseWords(list.text).length;
-        return `
+// ── Render ─────────────────────────────────────────────────
+function renderLists() {
+  if (!els.wordListsContainer) return;
+  els.wordListsContainer.innerHTML = state.lists
+    .map((list, idx) => {
+      const count = parseWords(list.text).length;
+      return `
         <div class="word-card ${list.enabled ? '' : 'disabled'}" data-id="${list.id}">
           <div class="card-header">
             <input type="text" class="card-title" value="${escapeHtml(list.name)}" data-action="rename" />
@@ -109,282 +102,281 @@
           <textarea class="card-textarea" placeholder="Enter words..." aria-label="${escapeHtml(list.name)}">${escapeHtml(list.text)}</textarea>
         </div>
       `;
-      })
-      .join('');
+    })
+    .join('');
+}
+
+// ── Engine ─────────────────────────────────────────────────
+function parseWords(text) {
+  if (!text) return [];
+  return text
+    .split(/[\n,;]+/)
+    .map((t) => (state.trimWords ? t.trim() : t))
+    .filter((t) => t.length > 0);
+}
+
+function getSep() {
+  if (state.separatorType === 'space') return ' ';
+  if (state.separatorType === 'nothing') return '';
+  return state.customSeparator;
+}
+
+function transformCase(text) {
+  switch (state.caseTransform) {
+    case 'lower':
+      return text.toLowerCase();
+    case 'upper':
+      return text.toUpperCase();
+    case 'title':
+      return text.replace(
+        /\w\S*/g,
+        (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(),
+      );
+    case 'camel': {
+      const c = text
+        .replace(/[^a-zA-Z0-9]+(.)/g, (_, chr) => chr.toUpperCase())
+        .replace(/[^a-zA-Z0-9]/g, '');
+      return c ? c.charAt(0).toLowerCase() + c.slice(1) : '';
+    }
+    case 'kebab':
+      return text
+        .replace(/([a-z])([A-Z])/g, '$1-$2')
+        .replace(/[\s_]+/g, '-')
+        .toLowerCase();
+    case 'snake':
+      return text
+        .replace(/([a-z])([A-Z])/g, '$1_$2')
+        .replace(/[\s-]+/g, '_')
+        .toLowerCase();
+    default:
+      return text;
+  }
+}
+
+function applyWrapper(w) {
+  switch (state.wrapper) {
+    case 'quotes':
+      return `"${w}"`;
+    case 'brackets':
+      return `[${w}]`;
+    case 'braces':
+      return `{${w}}`;
+    default:
+      return w;
+  }
+}
+
+function generateCombinations() {
+  const t0 = performance.now();
+  const active = state.lists
+    .filter((l) => l.enabled)
+    .map((l) => parseWords(l.text))
+    .filter((a) => a.length > 0);
+
+  if (active.length === 0) {
+    state.results = [];
+    renderOutput(0);
+    return;
   }
 
-  // ── Engine ─────────────────────────────────────────────────
-  function parseWords(text) {
-    if (!text) return [];
-    return text
-      .split(/[\n,;]+/)
-      .map((t) => (state.trimWords ? t.trim() : t))
-      .filter((t) => t.length > 0);
-  }
+  const sep = getSep();
+  let raw = [];
 
-  function getSep() {
-    if (state.separatorType === 'space') return ' ';
-    if (state.separatorType === 'nothing') return '';
-    return state.customSeparator;
-  }
-
-  function transformCase(text) {
-    switch (state.caseTransform) {
-      case 'lower':
-        return text.toLowerCase();
-      case 'upper':
-        return text.toUpperCase();
-      case 'title':
-        return text.replace(
-          /\w\S*/g,
-          (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(),
-        );
-      case 'camel': {
-        const c = text
-          .replace(/[^a-zA-Z0-9]+(.)/g, (_, chr) => chr.toUpperCase())
-          .replace(/[^a-zA-Z0-9]/g, '');
-        return c ? c.charAt(0).toLowerCase() + c.slice(1) : '';
+  if (state.combinationMode === 'cartesian') {
+    raw = active.reduce((acc, cur) => {
+      if (acc.length === 0) return cur;
+      const out = [];
+      for (const a of acc) for (const b of cur) out.push(a + sep + b);
+      return out;
+    }, []);
+  } else if (state.combinationMode === 'zip') {
+    const max = Math.max(...active.map((a) => a.length));
+    for (let i = 0; i < max; i++) {
+      const parts = active.map((a) => a[i]).filter(Boolean);
+      if (parts.length) raw.push(parts.join(sep));
+    }
+  } else if (state.combinationMode === 'subsets') {
+    (function subsets(arrs, prefix, depth) {
+      if (depth === arrs.length) {
+        if (prefix.length) raw.push(prefix.join(sep));
+        return;
       }
-      case 'kebab':
-        return text
-          .replace(/([a-z])([A-Z])/g, '$1-$2')
-          .replace(/[\s_]+/g, '-')
-          .toLowerCase();
-      case 'snake':
-        return text
-          .replace(/([a-z])([A-Z])/g, '$1_$2')
-          .replace(/[\s-]+/g, '_')
-          .toLowerCase();
-      default:
-        return text;
-    }
+      subsets(arrs, prefix, depth + 1);
+      for (const w of arrs[depth]) subsets(arrs, [...prefix, w], depth + 1);
+    })(active, [], 0);
   }
 
-  function applyWrapper(w) {
-    switch (state.wrapper) {
-      case 'quotes':
-        return `"${w}"`;
-      case 'brackets':
-        return `[${w}]`;
-      case 'braces':
-        return `{${w}}`;
-      default:
-        return w;
-    }
+  let final = raw.map((item) => {
+    let r = transformCase(item);
+    if (state.wrapper !== 'none') r = applyWrapper(r);
+    if (state.prefix || state.suffix) r = state.prefix + r + state.suffix;
+    return r;
+  });
+
+  if (state.removeDuplicates) final = Array.from(new Set(final));
+
+  state.results = final;
+  renderOutput((performance.now() - t0).toFixed(1));
+}
+
+function renderOutput(ms = 0) {
+  if (!els.outputCanvas) return;
+  let items = state.results;
+  if (state.searchQuery) {
+    const q = state.searchQuery.toLowerCase();
+    items = items.filter((x) => x.toLowerCase().includes(q));
   }
 
-  function generateCombinations() {
-    const t0 = performance.now();
-    const active = state.lists
-      .filter((l) => l.enabled)
-      .map((l) => parseWords(l.text))
-      .filter((a) => a.length > 0);
+  els.totalCountBadge.textContent = state.searchQuery
+    ? `${items.length} / ${state.results.length}`
+    : state.results.length;
+  if (ms !== undefined && els.calcTimeBadge)
+    els.calcTimeBadge.textContent = `${ms}ms`;
 
-    if (active.length === 0) {
-      state.results = [];
-      renderOutput(0);
-      return;
-    }
+  if (items.length === 0) {
+    els.outputCanvas.innerHTML = `<div class="empty-state">No combinations.</div>`;
+    return;
+  }
 
-    const sep = getSep();
-    let raw = [];
+  const shown = items.slice(0, state.displayLimit);
+  els.outputCanvas.innerHTML = shown
+    .map((item) => `<div class="output-line">${escapeHtml(item)}</div>`)
+    .join('');
+}
 
-    if (state.combinationMode === 'cartesian') {
-      raw = active.reduce((acc, cur) => {
-        if (acc.length === 0) return cur;
-        const out = [];
-        for (const a of acc) for (const b of cur) out.push(a + sep + b);
-        return out;
-      }, []);
-    } else if (state.combinationMode === 'zip') {
-      const max = Math.max(...active.map((a) => a.length));
-      for (let i = 0; i < max; i++) {
-        const parts = active.map((a) => a[i]).filter(Boolean);
-        if (parts.length) raw.push(parts.join(sep));
-      }
-    } else if (state.combinationMode === 'subsets') {
-      (function subsets(arrs, prefix, depth) {
-        if (depth === arrs.length) {
-          if (prefix.length) raw.push(prefix.join(sep));
-          return;
-        }
-        subsets(arrs, prefix, depth + 1);
-        for (const w of arrs[depth]) subsets(arrs, [...prefix, w], depth + 1);
-      })(active, [], 0);
-    }
+// ── Events ─────────────────────────────────────────────────
+function bindEvents() {
+  // Layout Toggles
+  els.inspectorToggle?.addEventListener('click', () => {
+    els.rightInspector.hidden = !els.rightInspector.hidden;
+  });
 
-    let final = raw.map((item) => {
-      let r = transformCase(item);
-      if (state.wrapper !== 'none') r = applyWrapper(r);
-      if (state.prefix || state.suffix) r = state.prefix + r + state.suffix;
-      return r;
+  els.themeToggleBtn?.addEventListener('click', () => {
+    setTheme(
+      document.documentElement.getAttribute('data-theme') === 'dark'
+        ? 'light'
+        : 'dark',
+    );
+  });
+
+  // Lists
+  els.addListBtn?.addEventListener('click', () => {
+    state.lists.push({
+      id: state.nextId++,
+      name: `List ${state.lists.length + 1}`,
+      text: '',
+      enabled: true,
     });
+    renderLists();
+    generateCombinations();
+  });
 
-    if (state.removeDuplicates) final = Array.from(new Set(final));
+  els.wordListsContainer?.addEventListener('input', (e) => {
+    const card = e.target.closest('.word-card');
+    if (!card) return;
+    const list = state.lists.find((l) => l.id === +card.dataset.id);
+    if (e.target.classList.contains('card-textarea')) {
+      list.text = e.target.value;
+      const cnt = parseWords(list.text).length;
+      card.querySelector('.card-actions span').textContent = `${cnt} words`;
+      generateCombinations();
+    } else if (e.target.classList.contains('card-title')) {
+      list.name = e.target.value;
+    }
+  });
 
-    state.results = final;
-    renderOutput((performance.now() - t0).toFixed(1));
-  }
+  els.wordListsContainer?.addEventListener('change', (e) => {
+    if (e.target.type === 'checkbox') {
+      const card = e.target.closest('.word-card');
+      const list = state.lists.find((l) => l.id === +card.dataset.id);
+      list.enabled = e.target.checked;
+      card.classList.toggle('disabled', !list.enabled);
+      generateCombinations();
+    }
+  });
 
-  function renderOutput(ms = 0) {
-    if (!els.outputCanvas) return;
+  els.wordListsContainer?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.icon-btn');
+    if (btn && btn.dataset.action === 'delete') {
+      const id = +btn.closest('.word-card').dataset.id;
+      state.lists = state.lists.filter((l) => l.id !== id);
+      renderLists();
+      generateCombinations();
+    }
+  });
+
+  // Inspector
+  els.modeSelect?.addEventListener('change', (e) => {
+    state.combinationMode = e.target.value;
+    generateCombinations();
+  });
+  els.separatorSelect?.addEventListener('change', (e) => {
+    state.separatorType = e.target.value;
+    els.customSepRow.hidden = state.separatorType !== 'custom';
+    generateCombinations();
+  });
+  els.customSepInput?.addEventListener('input', (e) => {
+    state.customSeparator = e.target.value;
+    generateCombinations();
+  });
+  els.caseSelect?.addEventListener('change', (e) => {
+    state.caseTransform = e.target.value;
+    generateCombinations();
+  });
+  els.wrapperSelect?.addEventListener('change', (e) => {
+    state.wrapper = e.target.value;
+    generateCombinations();
+  });
+  els.prefixInput?.addEventListener('input', (e) => {
+    state.prefix = e.target.value;
+    generateCombinations();
+  });
+  els.suffixInput?.addEventListener('input', (e) => {
+    state.suffix = e.target.value;
+    generateCombinations();
+  });
+  els.removeDupsCheck?.addEventListener('change', (e) => {
+    state.removeDuplicates = e.target.checked;
+    generateCombinations();
+  });
+  els.trimCheck?.addEventListener('change', (e) => {
+    state.trimWords = e.target.checked;
+    generateCombinations();
+  });
+
+  // Output
+  els.searchInput?.addEventListener('input', (e) => {
+    state.searchQuery = e.target.value;
+    renderOutput();
+  });
+
+  // Export (mock for now, copying to clipboard as default)
+  els.exportBtn?.addEventListener('click', () => {
     let items = state.results;
     if (state.searchQuery) {
       const q = state.searchQuery.toLowerCase();
       items = items.filter((x) => x.toLowerCase().includes(q));
     }
+    navigator.clipboard.writeText(items.join('\n'));
+    els.exportBtn.textContent = 'Copied!';
+    setTimeout(() => {
+      els.exportBtn.textContent = 'Export…';
+    }, 2000);
+  });
+}
 
-    els.totalCountBadge.textContent = state.searchQuery
-      ? `${items.length} / ${state.results.length}`
-      : state.results.length;
-    if (ms !== undefined && els.calcTimeBadge)
-      els.calcTimeBadge.textContent = `${ms}ms`;
+// ── Utils ──────────────────────────────────────────────────
+function escapeHtml(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
 
-    if (items.length === 0) {
-      els.outputCanvas.innerHTML = `<div class="empty-state">No combinations.</div>`;
-      return;
-    }
-
-    const shown = items.slice(0, state.displayLimit);
-    els.outputCanvas.innerHTML = shown
-      .map((item) => `<div class="output-line">${escapeHtml(item)}</div>`)
-      .join('');
-  }
-
-  // ── Events ─────────────────────────────────────────────────
-  function bindEvents() {
-    // Layout Toggles
-    els.inspectorToggle?.addEventListener('click', () => {
-      els.rightInspector.hidden = !els.rightInspector.hidden;
-    });
-
-    els.themeToggleBtn?.addEventListener('click', () => {
-      setTheme(
-        document.documentElement.getAttribute('data-theme') === 'dark'
-          ? 'light'
-          : 'dark',
-      );
-    });
-
-    // Lists
-    els.addListBtn?.addEventListener('click', () => {
-      state.lists.push({
-        id: state.nextId++,
-        name: `List ${state.lists.length + 1}`,
-        text: '',
-        enabled: true,
-      });
-      renderLists();
-      generateCombinations();
-    });
-
-    els.wordListsContainer?.addEventListener('input', (e) => {
-      const card = e.target.closest('.word-card');
-      if (!card) return;
-      const list = state.lists.find((l) => l.id === +card.dataset.id);
-      if (e.target.classList.contains('card-textarea')) {
-        list.text = e.target.value;
-        const cnt = parseWords(list.text).length;
-        card.querySelector('.card-actions span').textContent = `${cnt} words`;
-        generateCombinations();
-      } else if (e.target.classList.contains('card-title')) {
-        list.name = e.target.value;
-      }
-    });
-
-    els.wordListsContainer?.addEventListener('change', (e) => {
-      if (e.target.type === 'checkbox') {
-        const card = e.target.closest('.word-card');
-        const list = state.lists.find((l) => l.id === +card.dataset.id);
-        list.enabled = e.target.checked;
-        card.classList.toggle('disabled', !list.enabled);
-        generateCombinations();
-      }
-    });
-
-    els.wordListsContainer?.addEventListener('click', (e) => {
-      const btn = e.target.closest('.icon-btn');
-      if (btn && btn.dataset.action === 'delete') {
-        const id = +btn.closest('.word-card').dataset.id;
-        state.lists = state.lists.filter((l) => l.id !== id);
-        renderLists();
-        generateCombinations();
-      }
-    });
-
-    // Inspector
-    els.modeSelect?.addEventListener('change', (e) => {
-      state.combinationMode = e.target.value;
-      generateCombinations();
-    });
-    els.separatorSelect?.addEventListener('change', (e) => {
-      state.separatorType = e.target.value;
-      els.customSepRow.hidden = state.separatorType !== 'custom';
-      generateCombinations();
-    });
-    els.customSepInput?.addEventListener('input', (e) => {
-      state.customSeparator = e.target.value;
-      generateCombinations();
-    });
-    els.caseSelect?.addEventListener('change', (e) => {
-      state.caseTransform = e.target.value;
-      generateCombinations();
-    });
-    els.wrapperSelect?.addEventListener('change', (e) => {
-      state.wrapper = e.target.value;
-      generateCombinations();
-    });
-    els.prefixInput?.addEventListener('input', (e) => {
-      state.prefix = e.target.value;
-      generateCombinations();
-    });
-    els.suffixInput?.addEventListener('input', (e) => {
-      state.suffix = e.target.value;
-      generateCombinations();
-    });
-    els.removeDupsCheck?.addEventListener('change', (e) => {
-      state.removeDuplicates = e.target.checked;
-      generateCombinations();
-    });
-    els.trimCheck?.addEventListener('change', (e) => {
-      state.trimWords = e.target.checked;
-      generateCombinations();
-    });
-
-    // Output
-    els.searchInput?.addEventListener('input', (e) => {
-      state.searchQuery = e.target.value;
-      renderOutput();
-    });
-
-    // Export (mock for now, copying to clipboard as default)
-    els.exportBtn?.addEventListener('click', () => {
-      let items = state.results;
-      if (state.searchQuery) {
-        const q = state.searchQuery.toLowerCase();
-        items = items.filter((x) => x.toLowerCase().includes(q));
-      }
-      navigator.clipboard.writeText(items.join('\n'));
-      els.exportBtn.textContent = 'Copied!';
-      setTimeout(() => {
-        els.exportBtn.textContent = 'Export…';
-      }, 2000);
-    });
-  }
-
-  // ── Utils ──────────────────────────────────────────────────
-  function escapeHtml(s) {
-    return String(s || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
-})();
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}

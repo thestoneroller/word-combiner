@@ -1,14 +1,8 @@
-/* ============================================================
-   Word Combiner — macOS Native Rebuild
-   Based on apple.css & apple-system-tokens.md
-   ============================================================ */
-
-/* ── 1. Global macOS Tokens ────────────────────────────────── */
 :root {
   /* Boolean flags */
   --TRUE: 1;
   --FALSE: 0;
-  
+
   /* Structural globals */
   --component-fill: rgba(0, 0, 0, 0.1);
   --component-stroke: #c399ff;
@@ -19,7 +13,8 @@
   --link: #98ccff;
 
   /* Typography Base */
-  --font-system: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-system:
+    system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   /* Animations */
@@ -32,7 +27,7 @@ html {
   /* Default to light */
   --mode: 'Light';
   --window-background: #ffffff;
-  
+
   /* Labels */
   --labels--primary: rgba(0, 0, 0, 0.85);
   --labels--secondary: rgba(0, 0, 0, 0.5);
@@ -40,22 +35,22 @@ html {
   --labels--quaternary: rgba(0, 0, 0, 0.1);
   --labels--quinary: rgba(0, 0, 0, 0.05);
   --labels--white: #ffffff;
-  
+
   /* Vibrant Labels */
   --labels---vibrant--primary: #1a1a1a;
   --labels---vibrant--secondary: #727272;
   --labels---vibrant--tertiary: #bfbfbf;
-  
+
   /* Opaque Fills */
   --fills---opaque--primary: rgba(0, 0, 0, 0.1);
   --fills---opaque--secondary: rgba(0, 0, 0, 0.08);
   --fills---opaque--tertiary: rgba(0, 0, 0, 0.05);
   --fills---opaque--quaternary: rgba(0, 0, 0, 0.03);
-  
+
   /* Vibrant Fills (Sidebar/Toolbar) */
   --fills---vibrant--primary: rgba(217, 217, 217, 0.7);
   --fills---vibrant--secondary: rgba(230, 230, 230, 0.7);
-  
+
   /* Grays */
   --grays--black: #000000;
   --grays--white: #ffffff;
@@ -64,7 +59,7 @@ html {
   /* Accent (macOS Blue) */
   --accents--blue: #0088ff;
   --accents---vibrant--blue: #0078f0;
-  
+
   /* Semantic */
   --miscellaneous--sidebar--label---inactive: #878787;
   --miscellaneous--tables--alternating-row-color: rgba(0, 0, 0, 0.05);
@@ -78,39 +73,39 @@ html {
   --card-border: rgba(0, 0, 0, 0.08);
 }
 
-[data-theme="dark"] {
+[data-theme='dark'] {
   --mode: 'Dark';
   --window-background: #1e1e1e;
-  
+
   /* Labels */
   --labels--primary: rgba(255, 255, 255, 0.85);
   --labels--secondary: rgba(255, 255, 255, 0.55);
   --labels--tertiary: rgba(255, 255, 255, 0.25);
   --labels--quaternary: rgba(255, 255, 255, 0.1);
   --labels--quinary: rgba(255, 255, 255, 0.05);
-  
+
   /* Vibrant Labels */
   --labels---vibrant--primary: #f5f5f5;
   --labels---vibrant--secondary: #8a8a8a;
   --labels---vibrant--tertiary: #404040;
-  
+
   /* Opaque Fills */
   --fills---opaque--primary: rgba(255, 255, 255, 0.1);
   --fills---opaque--secondary: rgba(255, 255, 255, 0.08);
   --fills---opaque--tertiary: rgba(255, 255, 255, 0.05);
   --fills---opaque--quaternary: rgba(255, 255, 255, 0.03);
-  
+
   /* Vibrant Fills */
   --fills---vibrant--primary: rgba(36, 36, 36, 0.7);
   --fills---vibrant--secondary: rgba(20, 20, 20, 0.7);
-  
+
   /* Grays */
   --grays--gray: #98989f;
 
   /* Accent (macOS Blue) */
   --accents--blue: #0091ff;
   --accents---vibrant--blue: #0a99ff;
-  
+
   /* Semantic */
   --miscellaneous--sidebar--label---inactive: #666666;
   --miscellaneous--tables--alternating-row-color: rgba(255, 255, 255, 0.05);
@@ -125,9 +120,16 @@ html {
 }
 
 /* ── 3. Base Elements ──────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
-html, body {
+html,
+body {
   width: 100%;
   height: 100vh;
   overflow: hidden;
@@ -139,13 +141,18 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
-button, input, select, textarea {
+button,
+input,
+select,
+textarea {
   font-family: inherit;
   font-size: inherit;
   color: inherit;
 }
 
-textarea, input[type="text"], input[type="search"] {
+textarea,
+input[type='text'],
+input[type='search'] {
   user-select: text;
 }
 
@@ -172,7 +179,9 @@ textarea, input[type="text"], input[type="search"] {
   -webkit-app-region: drag; /* Electron standard for draggable headers */
 }
 
-.toolbar-left, .toolbar-center, .toolbar-right {
+.toolbar-left,
+.toolbar-center,
+.toolbar-right {
   display: flex;
   align-items: center;
   gap: 16px;
@@ -234,7 +243,9 @@ textarea, input[type="text"], input[type="search"] {
   font-size: 13px;
   cursor: pointer;
   border-radius: 6px;
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
   color: var(--labels--primary);
 }
 .preset-item:hover {
@@ -321,7 +332,9 @@ textarea, input[type="text"], input[type="search"] {
   justify-content: space-between;
   margin-bottom: 12px;
 }
-.inspector-row:last-child { margin-bottom: 0; }
+.inspector-row:last-child {
+  margin-bottom: 0;
+}
 .inspector-row-col {
   display: flex;
   flex-direction: column;
@@ -341,13 +354,15 @@ textarea, input[type="text"], input[type="search"] {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: 6px; /* medium global radius */
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
   transition: opacity 0.2s;
 }
 
-.word-card.disabled { opacity: 0.5; }
+.word-card.disabled {
+  opacity: 0.5;
+}
 
 .card-header {
   padding: 6px 10px;
@@ -390,8 +405,13 @@ textarea, input[type="text"], input[type="search"] {
   justify-content: center;
   color: var(--labels--secondary);
 }
-.icon-btn:hover { background: var(--fills---opaque--primary); color: var(--labels--primary); }
-.icon-btn:active { background: var(--fills---opaque--secondary); }
+.icon-btn:hover {
+  background: var(--fills---opaque--primary);
+  color: var(--labels--primary);
+}
+.icon-btn:active {
+  background: var(--fills---opaque--secondary);
+}
 
 .card-textarea {
   width: 100%;
@@ -412,18 +432,27 @@ textarea, input[type="text"], input[type="search"] {
   padding: 4px 12px;
   font-size: 13px;
   cursor: pointer;
-  box-shadow: 0 1px 1px rgba(0,0,0,0.04);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
 }
-.mac-btn:hover { background: var(--fills---opaque--secondary); }
-.mac-btn:active { background: var(--fills---opaque--primary); transform: scale(0.98); }
+.mac-btn:hover {
+  background: var(--fills---opaque--secondary);
+}
+.mac-btn:active {
+  background: var(--fills---opaque--primary);
+  transform: scale(0.98);
+}
 
 .mac-btn.primary {
   background: var(--accents--blue);
   color: white;
   border: none;
 }
-.mac-btn.primary:hover { filter: brightness(1.1); }
-.mac-btn.primary:active { filter: brightness(0.9); }
+.mac-btn.primary:hover {
+  filter: brightness(1.1);
+}
+.mac-btn.primary:active {
+  filter: brightness(0.9);
+}
 
 /* Native Select */
 .mac-select {
@@ -438,7 +467,10 @@ textarea, input[type="text"], input[type="search"] {
   outline: none;
   width: 140px;
 }
-.mac-select:focus { box-shadow: 0 0 0 3px rgba(0, 136, 255, 0.3); border-color: var(--accents--blue); }
+.mac-select:focus {
+  box-shadow: 0 0 0 3px rgba(0, 136, 255, 0.3);
+  border-color: var(--accents--blue);
+}
 
 /* Native Text Input */
 .mac-input {
@@ -469,14 +501,16 @@ textarea, input[type="text"], input[type="search"] {
 /* Native Toggle Switch (Medium Size) */
 .mac-toggle {
   position: relative;
-  width: 32px;  /* custom tight */
+  width: 32px; /* custom tight */
   height: 20px;
   appearance: none;
   background: var(--fills---opaque--tertiary);
   border: 1px solid var(--card-border);
   border-radius: 100px;
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
 }
 .mac-toggle::after {
   content: '';
@@ -487,10 +521,14 @@ textarea, input[type="text"], input[type="search"] {
   height: 16px;
   background: #ffffff;
   border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-  transition: transform 0.2s var(--ease-spring), width 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition:
+    transform 0.2s var(--ease-spring),
+    width 0.2s;
 }
-.mac-toggle:active::after { width: 22px; }
+.mac-toggle:active::after {
+  width: 22px;
+}
 .mac-toggle:checked {
   background: var(--accents--blue);
   border-color: transparent;
@@ -503,14 +541,21 @@ textarea, input[type="text"], input[type="search"] {
 }
 
 /* Scrollbars */
-::-webkit-scrollbar { width: 12px; height: 12px; }
-::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
 ::-webkit-scrollbar-thumb {
   background: var(--labels--quaternary);
   border: 3px solid var(--window-background);
   border-radius: 6px;
 }
-.sidebar-left ::-webkit-scrollbar-thumb { border-color: transparent; }
+.sidebar-left ::-webkit-scrollbar-thumb {
+  border-color: transparent;
+}
 
 /* Empty State */
 .empty-state {
@@ -542,6 +587,6 @@ textarea, input[type="text"], input[type="search"] {
 .mac-segment.active {
   background: var(--window-background);
   color: var(--labels--primary);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   font-weight: 500;
 }
