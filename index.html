@@ -65,7 +65,41 @@
             class="output-header"
             style="border-top: 1px solid var(--divider-color)"
           >
-            <div style="display: flex; gap: 16px; align-items: center">
+            <div class="output-header-left">
+              <div class="selection-control-group">
+                <input
+                  type="checkbox"
+                  class="mac-checkbox"
+                  id="selectAllCheckbox"
+                  title="Select All / Deselect All Filtered"
+                  aria-label="Select all combinations"
+                />
+                <div class="mac-dropdown-wrap">
+                  <button
+                    class="icon-btn sm"
+                    id="selectMenuBtn"
+                    title="Selection Actions"
+                    aria-haspopup="true"
+                    aria-label="Selection options"
+                  >
+                    <svg
+                      width="10"
+                      height="10"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.5"
+                    >
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </button>
+                  <div class="mac-menu" id="selectMenu" hidden>
+                    <button type="button" class="mac-menu-item" id="menuSelectAll">Select All</button>
+                    <button type="button" class="mac-menu-item" id="menuDeselectAll">Deselect All</button>
+                    <button type="button" class="mac-menu-item" id="menuInvertSelection">Invert Selection</button>
+                  </div>
+                </div>
+              </div>
               <input
                 type="search"
                 class="mac-input mac-search"
@@ -73,11 +107,37 @@
                 placeholder="Filter combinations"
               />
               <div class="output-stats">
-                <span id="totalCountBadge">0</span> items •
+                <span id="totalCountBadge">0</span> items<span
+                  id="selectedCountBadge"
+                  class="selected-stat"
+                  hidden
+                > • <span id="selectedCountNum">0</span> selected</span> •
                 <span id="calcTimeBadge">0ms</span>
               </div>
             </div>
-            <button class="mac-btn primary" id="exportBtn">Export…</button>
+            <div class="output-header-right">
+              <button
+                class="icon-btn"
+                id="quickCopyBtn"
+                title="Quick Copy (Selected / All)"
+                aria-label="Copy combinations to clipboard"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path
+                    d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+                  ></path>
+                </svg>
+              </button>
+              <button class="mac-btn primary" id="exportBtn">Export…</button>
+            </div>
           </div>
 
           <div
@@ -85,6 +145,7 @@
             id="outputCanvas"
             role="region"
             aria-live="polite"
+            tabindex="0"
           >
             <!-- Rendered by JS -->
           </div>
@@ -237,6 +298,93 @@
           </div>
         </aside>
       </div>
+    </div>
+
+    <!-- Export Modal Sheet -->
+    <div class="macos-sheet-backdrop" id="exportModal" hidden>
+      <div class="macos-sheet" role="dialog" aria-modal="true" aria-labelledby="exportSheetTitle">
+        <div class="sheet-header">
+          <span class="sheet-title" id="exportSheetTitle">Export Combinations</span>
+          <button class="icon-btn" id="closeExportModalBtn" title="Close" aria-label="Close export dialog">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="sheet-body">
+          <!-- Export Scope -->
+          <div class="sheet-section">
+            <label class="sheet-label">Scope</label>
+            <div class="mac-segmented sheet-segmented" id="exportScopeSegmented">
+              <button type="button" class="mac-segment active" data-scope="selected" id="scopeSelectedBtn">Selected (0)</button>
+              <button type="button" class="mac-segment" data-scope="filtered" id="scopeFilteredBtn">Filtered (0)</button>
+              <button type="button" class="mac-segment" data-scope="all" id="scopeAllBtn">All (0)</button>
+            </div>
+          </div>
+
+          <!-- Export Format -->
+          <div class="sheet-section">
+            <label class="sheet-label">Format</label>
+            <div class="mac-segmented sheet-segmented" id="exportFormatSegmented">
+              <button type="button" class="mac-segment active" data-format="txt">Text (.txt)</button>
+              <button type="button" class="mac-segment" data-format="csv">CSV (.csv)</button>
+              <button type="button" class="mac-segment" data-format="xlsx">Excel (.xlsx)</button>
+              <button type="button" class="mac-segment" data-format="json">JSON (.json)</button>
+            </div>
+          </div>
+
+          <!-- Format-Specific Options -->
+          <div class="sheet-section" id="textOptionsSection">
+            <div class="sheet-row">
+              <span class="sheet-label-sm">Delimiter</span>
+              <select class="mac-select" id="exportDelimiterSelect">
+                <option value="newline">Newline (\n)</option>
+                <option value="comma">Comma (, )</option>
+                <option value="tab">Tab (\t)</option>
+                <option value="space">Space ( )</option>
+                <option value="semicolon">Semicolon (; )</option>
+                <option value="custom">Custom…</option>
+              </select>
+            </div>
+            <div class="sheet-row" id="exportCustomDelimRow" hidden style="margin-top: 8px;">
+              <span class="sheet-label-sm">Custom Delimiter</span>
+              <input type="text" class="mac-input" id="exportCustomDelimInput" value=" | " style="width: 80px; text-align: center" />
+            </div>
+          </div>
+
+          <div class="sheet-section" id="csvOptionsSection" hidden>
+            <div class="sheet-row">
+              <span class="sheet-label-sm">Include Column Header</span>
+              <input type="checkbox" class="mac-toggle" id="exportHeaderToggle" checked />
+            </div>
+          </div>
+
+          <!-- Preview Summary -->
+          <div class="sheet-preview">
+            <div class="preview-header">
+              <span class="preview-title">Preview</span>
+              <span class="preview-count" id="previewCountBadge">0 items</span>
+            </div>
+            <div class="preview-box" id="exportPreviewBox"></div>
+          </div>
+        </div>
+        <div class="sheet-footer">
+          <button type="button" class="mac-btn" id="modalCancelBtn">Cancel</button>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="mac-btn" id="modalCopyBtn">Copy to Clipboard</button>
+            <button type="button" class="mac-btn primary" id="modalDownloadBtn">Download File</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="mac-toast" id="macToast" aria-live="polite">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34c759" stroke-width="2.5">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+      <span id="toastMessage">Copied to clipboard</span>
     </div>
 
     <!-- Minimal script dependencies -->

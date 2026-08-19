@@ -29,6 +29,16 @@ const state = {
   results: [],
   displayLimit: 500,
   isCalculating: false,
+  // Selection & Export
+  selectedItems: new Set(),
+  lastClickedIndex: -1,
+  exportConfig: {
+    scope: 'selected', // 'selected' | 'filtered' | 'all'
+    format: 'txt', // 'txt' | 'csv' | 'xlsx' | 'json'
+    delimiter: 'newline', // 'newline' | 'comma' | 'tab' | 'space' | 'semicolon' | 'custom'
+    customDelimiter: ' | ',
+    includeHeader: true,
+  },
 };
 
 // ── DOM refs ───────────────────────────────────────────────
@@ -46,9 +56,42 @@ const els = {
   // Output
   outputCanvas: $('outputCanvas'),
   totalCountBadge: $('totalCountBadge'),
+  selectedCountBadge: $('selectedCountBadge'),
+  selectedCountNum: $('selectedCountNum'),
   calcTimeBadge: $('calcTimeBadge'),
   searchInput: $('searchInput'),
   exportBtn: $('exportBtn'),
+  quickCopyBtn: $('quickCopyBtn'),
+  selectAllCheckbox: $('selectAllCheckbox'),
+  selectMenuBtn: $('selectMenuBtn'),
+  selectMenu: $('selectMenu'),
+  menuSelectAll: $('menuSelectAll'),
+  menuDeselectAll: $('menuDeselectAll'),
+  menuInvertSelection: $('menuInvertSelection'),
+
+  // Export Modal Sheet
+  exportModal: $('exportModal'),
+  closeExportModalBtn: $('closeExportModalBtn'),
+  modalCancelBtn: $('modalCancelBtn'),
+  modalCopyBtn: $('modalCopyBtn'),
+  modalDownloadBtn: $('modalDownloadBtn'),
+  exportScopeSegmented: $('exportScopeSegmented'),
+  scopeSelectedBtn: $('scopeSelectedBtn'),
+  scopeFilteredBtn: $('scopeFilteredBtn'),
+  scopeAllBtn: $('scopeAllBtn'),
+  exportFormatSegmented: $('exportFormatSegmented'),
+  textOptionsSection: $('textOptionsSection'),
+  exportDelimiterSelect: $('exportDelimiterSelect'),
+  exportCustomDelimRow: $('exportCustomDelimRow'),
+  exportCustomDelimInput: $('exportCustomDelimInput'),
+  csvOptionsSection: $('csvOptionsSection'),
+  exportHeaderToggle: $('exportHeaderToggle'),
+  exportPreviewBox: $('exportPreviewBox'),
+  previewCountBadge: $('previewCountBadge'),
+
+  // Toast
+  macToast: $('macToast'),
+  toastMessage: $('toastMessage'),
 
   // Inspector
   modeSelect: $('combinationModeSelect'),
@@ -221,6 +264,7 @@ function initWorker() {
       if (e.data.jobId === currentJobId) {
         state.results = e.data.results;
         state.isCalculating = false;
+        pruneSelectedItems();
         renderOutput(e.data.calcTime);
       }
     };
@@ -311,6 +355,7 @@ function generateCombinations() {
 
   if (active.length === 0) {
     state.results = [];
+    pruneSelectedItems();
     renderOutput(0);
     return;
   }
@@ -384,32 +429,367 @@ function runFallbackCalculation(p) {
 
   if (p.removeDuplicates) final = Array.from(new Set(final));
   state.results = final;
+  pruneSelectedItems();
   renderOutput((performance.now() - t0).toFixed(1));
+}
+
+// ── Selection Management ───────────────────────────────────
+function pruneSelectedItems() {
+  if (state.selectedItems.size === 0) return;
+  const currentSet = new Set(state.results);
+  for (const item of state.selectedItems) {
+    if (!currentSet.has(item)) {
+      state.selectedItems.delete(item);
+    }
+  }
+}
+
+function getFilteredResults() {
+  if (!state.searchQuery) return state.results;
+  const q = state.searchQuery.toLowerCase();
+  return state.results.filter((x) => x.toLowerCase().includes(q));
+}
+
+function updateSelectionUI(filtered = getFilteredResults()) {
+  const totalSelected = state.selectedItems.size;
+
+  // Selected badge in stats
+  if (els.selectedCountBadge && els.selectedCountNum) {
+    if (totalSelected > 0) {
+      els.selectedCountNum.textContent = totalSelected.toLocaleString();
+      els.selectedCountBadge.hidden = false;
+    } else {
+      els.selectedCountBadge.hidden = true;
+    }
+  }
+
+  // Export button label
+  if (els.exportBtn) {
+    els.exportBtn.textContent =
+      totalSelected > 0 ? `Export (${totalSelected.toLocaleString()})…` : 'Export…';
+  }
+
+  // Master Checkbox state
+  if (els.selectAllCheckbox) {
+    if (filtered.length === 0 || totalSelected === 0) {
+      els.selectAllCheckbox.checked = false;
+      els.selectAllCheckbox.indeterminate = false;
+    } else {
+      let filteredSelectedCount = 0;
+      for (let i = 0; i < filtered.length; i++) {
+        if (state.selectedItems.has(filtered[i])) filteredSelectedCount++;
+      }
+      if (filteredSelectedCount === filtered.length && filtered.length > 0) {
+        els.selectAllCheckbox.checked = true;
+        els.selectAllCheckbox.indeterminate = false;
+      } else if (filteredSelectedCount > 0) {
+        els.selectAllCheckbox.checked = false;
+        els.selectAllCheckbox.indeterminate = true;
+      } else {
+        els.selectAllCheckbox.checked = false;
+        els.selectAllCheckbox.indeterminate = false;
+      }
+    }
+  }
 }
 
 function renderOutput(ms = 0) {
   if (!els.outputCanvas) return;
-  let items = state.results;
-  if (state.searchQuery) {
-    const q = state.searchQuery.toLowerCase();
-    items = items.filter((x) => x.toLowerCase().includes(q));
-  }
+  const filtered = getFilteredResults();
 
   els.totalCountBadge.textContent = state.searchQuery
-    ? `${items.length} / ${state.results.length}`
+    ? `${filtered.length} / ${state.results.length}`
     : state.results.length.toLocaleString();
   if (ms !== undefined && els.calcTimeBadge)
     els.calcTimeBadge.textContent = `${ms}ms`;
 
-  if (items.length === 0) {
+  updateSelectionUI(filtered);
+
+  if (filtered.length === 0) {
     els.outputCanvas.innerHTML = `<div class="empty-state">No combinations.</div>`;
     return;
   }
 
-  const shown = items.slice(0, state.displayLimit);
+  const shown = filtered.slice(0, state.displayLimit);
   els.outputCanvas.innerHTML = shown
-    .map((item) => `<div class="output-line">${escapeHtml(item)}</div>`)
+    .map((item, idx) => {
+      const isSelected = state.selectedItems.has(item);
+      return `
+        <div class="output-line ${isSelected ? 'selected' : ''}" data-index="${idx}">
+          <span class="output-line-index">${idx + 1}</span>
+          <input type="checkbox" class="mac-checkbox item-checkbox" data-index="${idx}" ${isSelected ? 'checked' : ''} aria-label="Select row ${idx + 1}" />
+          <span class="output-text">${escapeHtml(item)}</span>
+        </div>
+      `;
+    })
     .join('');
+}
+
+// ── Toast ──────────────────────────────────────────────────
+let toastTimer = null;
+function showToast(message) {
+  if (!els.macToast || !els.toastMessage) return;
+  els.toastMessage.textContent = message;
+  els.macToast.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    els.macToast.classList.remove('show');
+  }, 2200);
+}
+
+// ── Export Modal & Generator ───────────────────────────────
+function getExportItems(scope = state.exportConfig.scope) {
+  const filtered = getFilteredResults();
+  if (scope === 'selected') {
+    return state.results.filter((item) => state.selectedItems.has(item));
+  } else if (scope === 'filtered') {
+    return filtered;
+  } else {
+    return state.results;
+  }
+}
+
+function getExportDelimiter() {
+  switch (state.exportConfig.delimiter) {
+    case 'newline':
+      return '\n';
+    case 'comma':
+      return ', ';
+    case 'tab':
+      return '\t';
+    case 'space':
+      return ' ';
+    case 'semicolon':
+      return '; ';
+    case 'custom':
+      return state.exportConfig.customDelimiter || ' ';
+    default:
+      return '\n';
+  }
+}
+
+function buildExportData(scope = state.exportConfig.scope, format = state.exportConfig.format) {
+  const items = getExportItems(scope);
+
+  if (format === 'txt') {
+    const delim = getExportDelimiter();
+    return {
+      type: 'text',
+      mime: 'text/plain;charset=utf-8',
+      extension: 'txt',
+      content: items.join(delim),
+      count: items.length,
+    };
+  } else if (format === 'csv') {
+    const lines = [];
+    if (state.exportConfig.includeHeader) {
+      lines.push('"Combination"');
+    }
+    for (const item of items) {
+      lines.push('"' + String(item).replace(/"/g, '""') + '"');
+    }
+    return {
+      type: 'text',
+      mime: 'text/csv;charset=utf-8',
+      extension: 'csv',
+      content: lines.join('\r\n'),
+      count: items.length,
+    };
+  } else if (format === 'json') {
+    return {
+      type: 'text',
+      mime: 'application/json;charset=utf-8',
+      extension: 'json',
+      content: JSON.stringify(items, null, 2),
+      count: items.length,
+    };
+  } else if (format === 'xlsx') {
+    return {
+      type: 'xlsx',
+      extension: 'xlsx',
+      items,
+      count: items.length,
+    };
+  }
+}
+
+function updateExportModalPreview() {
+  const data = buildExportData(state.exportConfig.scope, state.exportConfig.format);
+  if (!data) return;
+
+  if (els.previewCountBadge) {
+    els.previewCountBadge.textContent = `${data.count.toLocaleString()} items`;
+  }
+
+  if (els.exportPreviewBox) {
+    if (data.count === 0) {
+      els.exportPreviewBox.textContent = '(No items in selected scope)';
+      return;
+    }
+
+    if (data.type === 'xlsx') {
+      const sample = data.items.slice(0, 8);
+      const rows = state.exportConfig.includeHeader ? ['[Header: Combination]'] : [];
+      sample.forEach((item, i) => rows.push(`Row ${i + 1}: ${item}`));
+      if (data.items.length > 8) rows.push(`... and ${data.items.length - 8} more rows`);
+      els.exportPreviewBox.textContent = rows.join('\n');
+    } else {
+      const sampleLines = data.content.split('\n').slice(0, 10);
+      if (data.count > 10) sampleLines.push('...');
+      els.exportPreviewBox.textContent = sampleLines.join('\n');
+    }
+  }
+}
+
+function setExportScope(scope) {
+  state.exportConfig.scope = scope;
+  if (els.exportScopeSegmented) {
+    els.exportScopeSegmented.querySelectorAll('.mac-segment').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.scope === scope);
+    });
+  }
+  updateExportModalPreview();
+}
+
+function setExportFormat(format) {
+  state.exportConfig.format = format;
+  if (els.exportFormatSegmented) {
+    els.exportFormatSegmented.querySelectorAll('.mac-segment').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.format === format);
+    });
+  }
+
+  if (els.textOptionsSection) {
+    els.textOptionsSection.hidden = format !== 'txt';
+  }
+  if (els.csvOptionsSection) {
+    els.csvOptionsSection.hidden = format !== 'csv' && format !== 'xlsx';
+  }
+
+  updateExportModalPreview();
+}
+
+function openExportModal() {
+  if (!els.exportModal) return;
+  const selectedCount = state.selectedItems.size;
+  const filtered = getFilteredResults();
+  const allCount = state.results.length;
+
+  if (els.scopeSelectedBtn) {
+    els.scopeSelectedBtn.textContent = `Selected (${selectedCount.toLocaleString()})`;
+    els.scopeSelectedBtn.disabled = selectedCount === 0;
+  }
+  if (els.scopeFilteredBtn) {
+    els.scopeFilteredBtn.textContent = `Filtered (${filtered.length.toLocaleString()})`;
+    els.scopeFilteredBtn.style.display = state.searchQuery ? '' : 'none';
+  }
+  if (els.scopeAllBtn) {
+    els.scopeAllBtn.textContent = `All (${allCount.toLocaleString()})`;
+  }
+
+  // Default active scope
+  if (selectedCount > 0) {
+    setExportScope('selected');
+  } else if (state.searchQuery && filtered.length > 0) {
+    setExportScope('filtered');
+  } else {
+    setExportScope('all');
+  }
+
+  setExportFormat(state.exportConfig.format);
+  els.exportModal.hidden = false;
+}
+
+function closeExportModal() {
+  if (els.exportModal) els.exportModal.hidden = true;
+}
+
+function downloadExportFile() {
+  const data = buildExportData(state.exportConfig.scope, state.exportConfig.format);
+  if (!data || data.count === 0) {
+    showToast('No items to export');
+    return;
+  }
+
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0, 10);
+  const filename = `combinations-${dateStr}.${data.extension}`;
+
+  if (data.type === 'xlsx') {
+    if (window.XLSX) {
+      const aoa = state.exportConfig.includeHeader ? [['Combination']] : [];
+      data.items.forEach((item) => aoa.push([item]));
+      const ws = window.XLSX.utils.aoa_to_sheet(aoa);
+      const wb = window.XLSX.utils.book_new();
+      window.XLSX.utils.book_append_sheet(wb, ws, 'Combinations');
+      window.XLSX.writeFile(wb, filename);
+      showToast(`Exported ${data.count.toLocaleString()} items to Excel`);
+      closeExportModal();
+    } else {
+      showToast('Excel exporter unavailable');
+    }
+    return;
+  }
+
+  const blob = new Blob([data.content], { type: data.mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast(`Exported ${data.count.toLocaleString()} items (${data.extension})`);
+  closeExportModal();
+}
+
+function copyExportToClipboard() {
+  // If format is xlsx, copy formatted text for clipboard
+  const format = state.exportConfig.format === 'xlsx' ? 'txt' : state.exportConfig.format;
+  const data = buildExportData(state.exportConfig.scope, format);
+  if (!data || data.count === 0) {
+    showToast('No items to copy');
+    return;
+  }
+
+  navigator.clipboard
+    .writeText(data.content)
+    .then(() => {
+      showToast(`Copied ${data.count.toLocaleString()} items to clipboard`);
+      closeExportModal();
+    })
+    .catch((err) => {
+      console.warn('Clipboard write failed:', err);
+      showToast('Failed to copy to clipboard');
+    });
+}
+
+function quickCopy() {
+  let items = [];
+  let scopeLabel = '';
+  if (state.selectedItems.size > 0) {
+    items = state.results.filter((item) => state.selectedItems.has(item));
+    scopeLabel = `${items.length.toLocaleString()} selected`;
+  } else {
+    items = getFilteredResults();
+    scopeLabel = `${items.length.toLocaleString()} items`;
+  }
+
+  if (items.length === 0) {
+    showToast('No items to copy');
+    return;
+  }
+
+  navigator.clipboard
+    .writeText(items.join('\n'))
+    .then(() => {
+      showToast(`Copied ${scopeLabel} to clipboard`);
+    })
+    .catch((err) => {
+      console.warn('Clipboard write failed:', err);
+      showToast('Failed to copy to clipboard');
+    });
 }
 
 // ── Events ─────────────────────────────────────────────────
@@ -546,24 +926,189 @@ function bindEvents() {
     generateCombinations();
   });
 
-  // Output
+  // Output Search Filter
   els.searchInput?.addEventListener('input', (e) => {
     state.searchQuery = e.target.value;
     renderOutput();
   });
 
-  // Export
-  els.exportBtn?.addEventListener('click', () => {
-    let items = state.results;
-    if (state.searchQuery) {
-      const q = state.searchQuery.toLowerCase();
-      items = items.filter((x) => x.toLowerCase().includes(q));
+  // Output Canvas Item Click / Selection
+  els.outputCanvas?.addEventListener('click', (e) => {
+    const line = e.target.closest('.output-line');
+    if (!line) return;
+
+    const filtered = getFilteredResults();
+    const index = parseInt(line.dataset.index, 10);
+    const item = filtered[index];
+    if (item === undefined) return;
+
+    if (
+      e.shiftKey &&
+      state.lastClickedIndex >= 0 &&
+      state.lastClickedIndex < filtered.length
+    ) {
+      const start = Math.min(state.lastClickedIndex, index);
+      const end = Math.max(state.lastClickedIndex, index);
+      const shouldSelect = !state.selectedItems.has(item);
+      for (let i = start; i <= end; i++) {
+        if (shouldSelect) {
+          state.selectedItems.add(filtered[i]);
+        } else {
+          state.selectedItems.delete(filtered[i]);
+        }
+      }
+    } else {
+      if (state.selectedItems.has(item)) {
+        state.selectedItems.delete(item);
+      } else {
+        state.selectedItems.add(item);
+      }
     }
-    navigator.clipboard.writeText(items.join('\n'));
-    els.exportBtn.textContent = 'Copied!';
-    setTimeout(() => {
-      els.exportBtn.textContent = 'Export…';
-    }, 2000);
+
+    state.lastClickedIndex = index;
+    renderOutput();
+  });
+
+  // Master Checkbox Toggle
+  els.selectAllCheckbox?.addEventListener('click', (e) => {
+    const filtered = getFilteredResults();
+    if (filtered.length === 0) return;
+
+    let allSelected = true;
+    for (const item of filtered) {
+      if (!state.selectedItems.has(item)) {
+        allSelected = false;
+        break;
+      }
+    }
+
+    if (allSelected) {
+      for (const item of filtered) {
+        state.selectedItems.delete(item);
+      }
+    } else {
+      for (const item of filtered) {
+        state.selectedItems.add(item);
+      }
+    }
+    renderOutput();
+  });
+
+  // Selection Dropdown Menu
+  els.selectMenuBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (els.selectMenu) {
+      els.selectMenu.hidden = !els.selectMenu.hidden;
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (els.selectMenu && !els.selectMenu.hidden && !e.target.closest('.mac-dropdown-wrap')) {
+      els.selectMenu.hidden = true;
+    }
+  });
+
+  els.menuSelectAll?.addEventListener('click', () => {
+    const filtered = getFilteredResults();
+    for (const item of filtered) {
+      state.selectedItems.add(item);
+    }
+    if (els.selectMenu) els.selectMenu.hidden = true;
+    renderOutput();
+  });
+
+  els.menuDeselectAll?.addEventListener('click', () => {
+    state.selectedItems.clear();
+    if (els.selectMenu) els.selectMenu.hidden = true;
+    renderOutput();
+  });
+
+  els.menuInvertSelection?.addEventListener('click', () => {
+    const filtered = getFilteredResults();
+    for (const item of filtered) {
+      if (state.selectedItems.has(item)) {
+        state.selectedItems.delete(item);
+      } else {
+        state.selectedItems.add(item);
+      }
+    }
+    if (els.selectMenu) els.selectMenu.hidden = true;
+    renderOutput();
+  });
+
+  // Quick Copy & Export Buttons
+  els.quickCopyBtn?.addEventListener('click', quickCopy);
+  els.exportBtn?.addEventListener('click', openExportModal);
+
+  // Export Modal Controls
+  els.closeExportModalBtn?.addEventListener('click', closeExportModal);
+  els.modalCancelBtn?.addEventListener('click', closeExportModal);
+  els.modalCopyBtn?.addEventListener('click', copyExportToClipboard);
+  els.modalDownloadBtn?.addEventListener('click', downloadExportFile);
+
+  els.exportModal?.addEventListener('click', (e) => {
+    if (e.target === els.exportModal) closeExportModal();
+  });
+
+  els.exportScopeSegmented?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.mac-segment');
+    if (btn && btn.dataset.scope && !btn.disabled) {
+      setExportScope(btn.dataset.scope);
+    }
+  });
+
+  els.exportFormatSegmented?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.mac-segment');
+    if (btn && btn.dataset.format) {
+      setExportFormat(btn.dataset.format);
+    }
+  });
+
+  els.exportDelimiterSelect?.addEventListener('change', (e) => {
+    state.exportConfig.delimiter = e.target.value;
+    if (els.exportCustomDelimRow) {
+      els.exportCustomDelimRow.hidden = state.exportConfig.delimiter !== 'custom';
+    }
+    updateExportModalPreview();
+  });
+
+  els.exportCustomDelimInput?.addEventListener('input', (e) => {
+    state.exportConfig.customDelimiter = e.target.value;
+    updateExportModalPreview();
+  });
+
+  els.exportHeaderToggle?.addEventListener('change', (e) => {
+    state.exportConfig.includeHeader = e.target.checked;
+    updateExportModalPreview();
+  });
+
+  // Keyboard Shortcuts
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (els.exportModal && !els.exportModal.hidden) {
+        closeExportModal();
+        e.preventDefault();
+      }
+      if (els.selectMenu && !els.selectMenu.hidden) {
+        els.selectMenu.hidden = true;
+      }
+    }
+
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'e') {
+      e.preventDefault();
+      openExportModal();
+    }
+
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a') {
+      if (document.activeElement === els.outputCanvas) {
+        e.preventDefault();
+        const filtered = getFilteredResults();
+        for (const item of filtered) {
+          state.selectedItems.add(item);
+        }
+        renderOutput();
+      }
+    }
   });
 }
 
@@ -582,3 +1127,4 @@ if (document.readyState === 'loading') {
 } else {
   init();
 }
+
